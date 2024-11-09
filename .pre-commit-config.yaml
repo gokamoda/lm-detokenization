@@ -1,0 +1,16 @@
+default_stages: [pre-commit]
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.5.2
+    hooks:
+    # Run the linter.
+    - id: ruff
+      name: Ruff check
+      # types_or: [ python, pyi, jupyter ]
+      description: "Run 'ruff check' for extremely fast Python linting"
+      args: [ --fix, --unsafe-fixes, --extend-select, I]
+    # Run the formatter.
+    - id: ruff-format
+      name: Ruff format
+      # types_or: [ python, pyi, jupyter ]
+      description: "Run 'ruff format' for extremely fast Python formatting"
