@@ -27,3 +27,9 @@
     ```
     pre-commit install
     ```
+
+## Add torch 
+- for mac
+    ```
+    uv add torch
+    ```
