@@ -5,7 +5,7 @@ from torchtyping import TensorType
 from transformers import AutoModelForCausalLM
 
 from utils.ln import get_var_matrix
-from utils.mytorchtyping import BATCH, HEAD, HIDDEN_DIM, POS, VOCAB
+from utils.mytorchtyping import HIDDEN_DIM, POS, VOCAB
 from visualize import (
     l0_te_main,
     l0_tee_main,
@@ -20,27 +20,27 @@ from visualize import (
 scripts = {
     "l0_tp": {
         "function": l0_tp_main,
-        "required_args": ["head"],
+        "required_args": ["heads"],
     },
     "l0_tpp": {
         "function": l0_tpp_main,
-        "required_args": ["head", "pos_i"],
+        "required_args": ["heads", "pos_i"],
     },
     "l0_tp_tpp": {
         "function": l0_tp_tpp_main,
-        "required_args": ["head", "pos_i"],
+        "required_args": ["heads", "pos_i"],
     },
     "l0_tpp_undertrained": {
         "function": l0_tpp_undertrained_main,
-        "required_args": ["head"],
+        "required_args": ["heads"],
     },
     "l0_tee": {
         "function": l0_tee_main,
-        "required_args": ["head", "n_samples"],
+        "required_args": ["heads", "n_samples"],
     },
     "l0_te": {
         "function": l0_te_main,
-        "required_args": ["head"],
+        "required_args": ["heads"],
     },
     "var_wpe": {
         "function": var_wpe_main,
@@ -56,7 +56,7 @@ scripts = {
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--mode", type=str, default="self", choices=scripts.keys())
-    parser.add_argument("--head", type=int, nargs="+", default=[0])
+    parser.add_argument("--heads", type=int, nargs="+", default=[0])
     parser.add_argument("--pos-i", type=int, default=200)
     parser.add_argument("--n-samples", type=int, default=100)
     args = parser.parse_args()
@@ -81,9 +81,6 @@ if __name__ == "__main__":
         .cpu()
     )
     var_matrix = torch.sqrt(get_var_matrix(wpe, wte) + 1e-5).to(torch.float16)
-
-    if len(args.head) == 1:
-        kwargs["head"] = args.head[0]
 
     kwargs["wpe"] = wpe
     kwargs["wte"] = wte

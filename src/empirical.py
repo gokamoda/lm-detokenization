@@ -9,7 +9,7 @@ from empirical import (
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument("--mode", type=str, default="main")
+    parser.add_argument("--mode", type=str, choices=["vs_tptpp", "six"])
     parser.add_argument("--func", type=str, choices=["vis", "main"])
     args = parser.parse_args()
 

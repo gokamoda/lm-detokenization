@@ -22,11 +22,9 @@ save_dir.mkdir(exist_ok=True, parents=True)
 def self_score_vis(
     wpe: TensorType[POS, HIDDEN_DIM],
     model_name: str,
-    head: int,
+    heads: list[int],
     var_matrix: TensorType[POS, VOCAB],
 ) -> None:
-    print(f"Visualizing TP for head {head}")
-
     self_score: TensorType[1, HEAD, POS] = compute_self_score(
         j=wpe.unsqueeze(0),
         w=EQGPT2LMHeadModel.from_pretrained(model_name)
@@ -35,56 +33,85 @@ def self_score_vis(
         .cpu(),
     )
 
-    fig, axes = get_fig_axes_nrows2()
+    assert len(heads) <= 2
+    fig, _axes = get_fig_axes_nrows2()
 
-    # Without LN
-    plot_lineplot_noln(axes[0], self_score[0, head], linewidth=linewidth)
+    for head_iterator_idx, head in enumerate(heads):
+        # print(f"Plotting head {head}")
+        axes = _axes[head_iterator_idx]
+        # # Without LN
+        print("Plotting without LN")
+        plot_lineplot_noln(axes[0], self_score[0, head], linewidth=linewidth)
 
-    # With LN
-    self_score: TensorType[1, HEAD, POS, VOCAB] = ln_pos(
-        x=self_score, var_matrix=var_matrix
-    )
-    plot_lineplot_ln(axes[1], self_score[0, head], linewidth=linewidth)
+        # With LN
+        print("Plotting with LN")
+        self_score_: TensorType[1, HEAD, POS, VOCAB] = ln_pos(
+            x=self_score, var_matrix=var_matrix
+        )
+        plot_lineplot_ln(axes[1], self_score_[0, head], linewidth=linewidth)
 
-    # Adjustments
+        # Adjustments
 
-    # Space between subplots
-    fig.subplots_adjust(wspace=0.1, hspace=0.1)
+        # Space between subplots
+        # fig.subplots_adjust(wspace=0.1, hspace=0.1)
 
-    # Titles
-    axes[0].set_title(
-        "$\\mathbf{b}_{" + str(head) + "}^{QK}\\mathbf{p}_j^\\top$",
-        y=0.82,
-        x=0.006,
-        loc="left",
-    )
-    axes[1].set_title(
-        "$T^{\\text{p}}_{j, " + str(head) + "}$",
-        y=0.82,
-        x=0.006,
-        loc="left",
-    )
+        # Titles
+        axes[0].annotate(
+            "$\\mathbf{b}_{" + str(head) + "}^{QK}\\mathbf{p}_j^\\top$",
+            xy=(0.006, 0.82),
+            xycoords="axes fraction",
+            fontsize=80,
+        )
+        axes[1].annotate(
+            "$T^{\\text{p}}_{j, " + str(head) + "}$",
+            xy=(0.006, 0.82),
+            xycoords="axes fraction",
+            fontsize=80,
+        )
+        # axes[0].set_title(
+        #     "$\\mathbf{b}_{" + str(head) + "}^{QK}\\mathbf{p}_j^\\top$",
+        #     y=0.82,
+        #     x=0.006,
+        #     loc="left",
+        # )
+        # axes[1].set_title(
+        #     "$T^{\\text{p}}_{j, " + str(head) + "}$",
+        #     y=0.80,
+        #     x=0.006,
+        #     loc="left",
+        # )
 
-    # Labels
-    axes[1].set_xlabel("Past token position ($j$)")
-    axes[1].set_ylabel("")
+        # Labels
+        if head_iterator_idx == 1:
+            axes[0].set_xlabel("Past token position ($j$)")
+            axes[1].set_xlabel("Past token position ($j$)")
+        if head_iterator_idx == 0:
+            axes[0].set_title("Without LN")
+            axes[1].set_title("With LN")
 
-    # Ticks
-    axes[0].xaxis.set_tick_params(
-        width=linewidth, length=linewidth * 2, direction="out"
-    )
-    axes[1].xaxis.set_tick_params(
-        width=linewidth, length=linewidth * 2, direction="out"
-    )
-    axes[0].yaxis.set_tick_params(
-        width=linewidth, length=linewidth * 2, direction="out"
-    )
-    axes[1].yaxis.set_tick_params(
-        width=linewidth, length=linewidth * 2, direction="out"
-    )
+        axes[0].set_ylabel(f"Head {head}")
+        axes[1].set_ylabel("")
+
+        # Ticks
+        axes[0].xaxis.set_tick_params(
+            width=linewidth, length=linewidth * 2, direction="out"
+        )
+        axes[1].xaxis.set_tick_params(
+            width=linewidth, length=linewidth * 2, direction="out"
+        )
+        axes[0].yaxis.set_tick_params(
+            width=linewidth, length=linewidth * 2, direction="out"
+        )
+        axes[1].yaxis.set_tick_params(
+            width=linewidth, length=linewidth * 2, direction="out"
+        )
+    fig.subplots_adjust(wspace=0.25)
 
     # Save
-    fig.savefig(save_dir.joinpath(f"l0tp_head-{head}.pdf"), bbox_inches="tight")
+    print("Saving")
+    head_str = "-".join(map(str, heads))
+    fig.savefig(save_dir.joinpath(f"l0tp_head-{head_str}.pdf"), bbox_inches="tight")
+    print("saved at:", save_dir.joinpath(f"l0tp_head-{head_str}.pdf"))
 
 
 def self_score_vis_all_heads(
@@ -147,11 +174,11 @@ def main(
     model_name: str,
     wpe: TensorType[POS, HIDDEN_DIM],
     var_matrix: TensorType[POS, VOCAB],
-    head: int,
+    heads: list[int],
     **kwargs,
 ) -> None:
     del kwargs
-    if head == -1:
+    if heads == [-1]:
         self_score_vis_all_heads(
             wpe=wpe,
             model_name=model_name,
@@ -161,6 +188,6 @@ def main(
         self_score_vis(
             wpe=wpe,
             model_name=model_name,
-            head=head,
+            heads=heads,
             var_matrix=var_matrix,
         )

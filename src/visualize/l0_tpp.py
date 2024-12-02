@@ -23,11 +23,11 @@ save_dir.mkdir(exist_ok=True, parents=True)
 def compare_score_vis(
     wpe: TensorType[POS, HIDDEN_DIM],
     model_name: str,
-    head: int,
+    heads: list[int],
     var_matrix: TensorType[POS, VOCAB],
     pos_i: int,
 ) -> None:
-    fig, axes = get_fig_axes_nrows2()
+    fig, axes_ = get_fig_axes_nrows2()
 
     compare_score: TensorType[1, HEAD, POS, POS] = compute_compare_score(
         i=wpe.unsqueeze(0),
@@ -38,75 +38,112 @@ def compare_score_vis(
         .cpu(),
     )
 
-    # Without LN
-    plot_lineplot_noln(
-        axes[0], compare_score[0, head, pos_i, :pos_i], linewidth=linewidth
-    )
+    for head_iterator_idx, head in enumerate(heads):
+        axes = axes_[head_iterator_idx]
 
-    var_mean_i = var_matrix[pos_i].mean(dim=-1)
-    var_max_i = var_matrix[pos_i].max(dim=-1).values
-    var_min_i = var_matrix[pos_i].min(dim=-1).values
-
-    for var_i in (var_mean_i, var_max_i, var_min_i):
-        # divide by var_i
-        compare_score_i: TensorType[pos_i] = (
-            compare_score[0, head, pos_i, : pos_i + 1] / var_i
+        # Without LN
+        plot_lineplot_noln(
+            axes[0], compare_score[0, head, pos_i, :pos_i], linewidth=linewidth
         )
 
-        # divide by var_j
-        var_j: TensorType[pos_i, VOCAB] = var_matrix[: pos_i + 1]
-        compare_score_i: TensorType[pos_i, VOCAB] = (
-            compare_score_i.unsqueeze(-1).expand(-1, var_matrix.shape[1]) / var_j
+        var_mean_i = var_matrix[pos_i].mean(dim=-1)
+        var_max_i = var_matrix[pos_i].max(dim=-1).values
+        var_min_i = var_matrix[pos_i].min(dim=-1).values
+
+        for var_i in (var_mean_i, var_max_i, var_min_i):
+            # divide by var_i
+            compare_score_i: TensorType[pos_i] = (
+                compare_score[0, head, pos_i, : pos_i + 1] / var_i
+            )
+
+            # divide by var_j
+            var_j: TensorType[pos_i, VOCAB] = var_matrix[: pos_i + 1]
+            compare_score_i: TensorType[pos_i, VOCAB] = (
+                compare_score_i.unsqueeze(-1).expand(-1, var_matrix.shape[1]) / var_j
+            )
+
+            plot_lineplot_ln(
+                axes[1],
+                compare_score_i,
+            )
+
+        # Adjustments
+        # fig.subplots_adjust(wspace=0.1, hspace=0.1)
+
+        # Titles
+        axes[0].annotate(
+            r"$\mathbf{p}_{"
+            + str(pos_i)
+            + r"}\mathbf{W}_{"
+            + str(head)
+            + "}^{QK}\\mathbf{p}_j^\\top$",
+            xy=(0.006, 0.82),
+            xycoords="axes fraction",
+            fontsize=80,
+        )
+        axes[1].annotate(
+            "$T^{\\text{pp}}_{" + str(pos_i) + ", j, " + str(head) + "}$",
+            xy=(0.006, 0.82),
+            xycoords="axes fraction",
+            fontsize=80,
+        )
+        # axes[0].set_title(
+        #     r"$\mathbf{p}_{"
+        #     + str(pos_i)
+        #     + r"}\mathbf{W}_{"
+        #     + str(head)
+        #     + "}^{QK}\\mathbf{p}_j^\\top$",
+        #     y=0.80,
+        #     x=0.006,
+        #     loc="left",
+        # )
+        # axes[1].set_title(
+        #     "$T^{\\text{pp}}_{" + str(pos_i) + ", j, " + str(head) + "}$",
+        #     y=0.80,
+        #     x=0.006,
+        #     loc="left",
+        # )
+
+        bottom, top = axes[0].get_ylim()
+        axes[0].set_ylim((bottom, top + 0.23 * (top - bottom)))
+        bottom, top = axes[1].get_ylim()
+        axes[1].set_ylim((bottom, top + 0.23 * (top - bottom)))
+
+        # Labels
+        if head_iterator_idx == 1:
+            axes[0].set_xlabel("Past token position ($j$)")
+            axes[1].set_xlabel("Past token position ($j$)")
+        if head_iterator_idx == 0:
+            axes[0].set_title("Without LN")
+            axes[1].set_title("With LN")
+
+        axes[0].set_ylabel(f"Head {head}")
+        axes[1].set_ylabel("")
+
+        # Ticks
+        axes[0].xaxis.set_tick_params(
+            width=linewidth, length=linewidth * 2, direction="out"
+        )
+        axes[1].xaxis.set_tick_params(
+            width=linewidth, length=linewidth * 2, direction="out"
+        )
+        axes[0].yaxis.set_tick_params(
+            width=linewidth, length=linewidth * 2, direction="out"
+        )
+        axes[1].yaxis.set_tick_params(
+            width=linewidth, length=linewidth * 2, direction="out"
         )
 
-        plot_lineplot_ln(
-            axes[1],
-            compare_score_i,
-        )
-
-    # Adjustments
-    fig.subplots_adjust(wspace=0.1, hspace=0.1)
-
-    # Titles
-    axes[0].set_title(
-        r"$\mathbf{p}_{"
-        + str(pos_i)
-        + r"}\mathbf{W}_{"
-        + str(head)
-        + "}^{QK}\\mathbf{p}_j^\\top$",
-        y=0.80,
-        x=0.006,
-        loc="left",
-    )
-    axes[1].set_title(
-        "$T^{\\text{pp}}_{" + str(pos_i) + ", j, " + str(head) + "}$",
-        y=0.80,
-        x=0.006,
-        loc="left",
-    )
-
-    # Labels
-    axes[1].set_xlabel("Past token position ($j$)")
-    axes[1].set_ylabel("")
-
-    # Ticks
-    axes[0].xaxis.set_tick_params(
-        width=linewidth, length=linewidth * 2, direction="out"
-    )
-    axes[1].xaxis.set_tick_params(
-        width=linewidth, length=linewidth * 2, direction="out"
-    )
-    axes[0].yaxis.set_tick_params(
-        width=linewidth, length=linewidth * 2, direction="out"
-    )
-    axes[1].yaxis.set_tick_params(
-        width=linewidth, length=linewidth * 2, direction="out"
-    )
+    fig.subplots_adjust(wspace=0.25)
+    fig.align_ylabels()
 
     # Save
+    head_str = "-".join(map(str, heads))
     fig.savefig(
-        save_dir.joinpath(f"l0tpp_head-{head}_posi-{pos_i}.pdf"), bbox_inches="tight"
+        save_dir.joinpath(f"l0tpp_head-{head_str}_posi-{pos_i}.pdf"),
+        bbox_inches="tight",
     )
+    print("saved at:", save_dir.joinpath(f"l0tpp_head-{head_str}_posi-{pos_i}.pdf"))
 
 
 def compare_score_vis_all_heads(
@@ -188,10 +225,10 @@ def main(
     model_name: str,
     wpe: TensorType[POS, HIDDEN_DIM],
     var_matrix: TensorType[POS, VOCAB],
-    head: int,
+    heads: list[int],
     **kwargs,
 ) -> None:
-    if head == -1:
+    if heads == [-1]:
         compare_score_vis_all_heads(
             wpe=wpe,
             model_name=model_name,
@@ -202,6 +239,6 @@ def main(
             wpe=wpe,
             model_name=model_name,
             var_matrix=var_matrix,
-            head=head,
+            heads=heads,
             pos_i=kwargs["pos_i"],
         )

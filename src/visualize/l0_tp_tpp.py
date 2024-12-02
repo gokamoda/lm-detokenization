@@ -20,8 +20,14 @@ save_dir = Path("figures/l0_tp_tpp")
 save_dir.mkdir(exist_ok=True, parents=True)
 
 
-def both_score_vis(wpe, model_name, head, var_matrix, pos_i) -> None:
-    fig, axes = get_fig_axes_nrows2()
+def both_score_vis(
+    wpe: TensorType[POS, HIDDEN_DIM],
+    model_name: str,
+    heads: list[int],
+    var_matrix: TensorType[POS, VOCAB],
+    pos_i: int,
+) -> None:
+    fig, axes_ = get_fig_axes_nrows2()
 
     compare_score: TensorType[1, HEAD, POS, POS] = compute_compare_score(
         i=wpe.unsqueeze(0),
@@ -47,87 +53,107 @@ def both_score_vis(wpe, model_name, head, var_matrix, pos_i) -> None:
     var_max_i = var_matrix[pos_i].max(dim=-1).values
     var_min_i = var_matrix[pos_i].min(dim=-1).values
 
-    for var_i in (var_mean_i, var_max_i, var_min_i):
-        # divide by var_i
-        compare_score_i: TensorType[pos_i] = (
-            compare_score[0, head, pos_i, : pos_i + 1] / var_i
+    for head_iterator_idx, head in enumerate(heads):
+        axes = axes_[head_iterator_idx]
+
+        for var_i in (var_mean_i, var_max_i, var_min_i):
+            # divide by var_i
+            compare_score_i: TensorType[pos_i] = (
+                compare_score[0, head, pos_i, : pos_i + 1] / var_i
+            )
+
+            # divide by var_j
+            var_j: TensorType[pos_i, VOCAB] = var_matrix[: pos_i + 1]
+            compare_score_i: TensorType[pos_i, VOCAB] = (
+                compare_score_i.unsqueeze(-1).expand(-1, var_matrix.shape[1]) / var_j
+            )
+
+            scores_i = compare_score_i + self_score[0, head, : pos_i + 1]
+
+            # before softmax
+            plot_lineplot_ln(axes[0], scores_i)
+
+            # after softmax
+            hidden_dim = wpe.shape[1]
+            num_heads = self_score.shape[1]
+            scores_i = scores_i.mean(dim=-1) / ((hidden_dim / num_heads) ** 0.5)
+            scores_i = torch.nn.functional.softmax(scores_i, dim=-1)
+            axes[1].plot(scores_i, linewidth=linewidth)
+
+        # Adjustments
+
+        # Titles
+        axes[0].annotate(
+            "$T^{\\text{pp}}_{"
+            + str(pos_i)
+            + ", j, "
+            + str(head)
+            + "}"
+            + "+ T^{\\text{p}}_{j, "
+            + str(head)
+            + "}$",
+            xy=(0.006, 0.82),
+            xycoords="axes fraction",
+            fontsize=80,
+        )
+        axes[1].annotate(
+            "$\\text{softmax}_j\\frac{T^{\\text{pp}}_{"
+            + str(pos_i)
+            + ", j, "
+            + str(head)
+            + "}"
+            + " + T^{\\text{p}}_{j, "
+            + str(head)
+            + "}}{\\sqrt{d'}}$",
+            xy=(0.006, 0.75),
+            xycoords="axes fraction",
+            fontsize=80,
         )
 
-        # divide by var_j
-        var_j: TensorType[pos_i, VOCAB] = var_matrix[: pos_i + 1]
-        compare_score_i: TensorType[pos_i, VOCAB] = (
-            compare_score_i.unsqueeze(-1).expand(-1, var_matrix.shape[1]) / var_j
+        if head == 7:
+            bottom, top = axes[0].get_ylim()
+            axes[0].set_ylim((bottom, top + 0.1 * (top - bottom)))
+
+        # Labels
+        if head_iterator_idx == 1:
+            axes[0].set_xlabel("Past token position ($j$)")
+            axes[1].set_xlabel("Past token position ($j$)")
+        if head_iterator_idx == 0:
+            axes[0].set_title("Before softmax")
+            axes[1].set_title("After softmax")
+
+        axes[0].set_ylabel(f"Head {head}")
+        axes[1].set_ylabel("")
+
+        # Ticks
+        axes[0].xaxis.set_tick_params(
+            width=linewidth, length=linewidth * 2, direction="out"
+        )
+        axes[0].yaxis.set_tick_params(
+            width=linewidth, length=linewidth * 2, direction="out"
+        )
+        axes[1].xaxis.set_tick_params(
+            width=linewidth, length=linewidth * 2, direction="out"
+        )
+        axes[1].yaxis.set_tick_params(
+            width=linewidth, length=linewidth * 2, direction="out"
         )
 
-        scores_i = compare_score_i + self_score[0, head, : pos_i + 1]
-
-        # before softmax
-        plot_lineplot_ln(axes[0], scores_i)
-
-        # after softmax
-        hidden_dim = wpe.shape[1]
-        num_heads = self_score.shape[1]
-        scores_i = scores_i.mean(dim=-1) / ((hidden_dim / num_heads) ** 0.5)
-        scores_i = torch.nn.functional.softmax(scores_i, dim=-1)
-        axes[1].plot(scores_i, linewidth=linewidth)
-
-    # Adjustments
-
-    # Titles
-    axes[0].set_title(
-        "$T^{\\text{pp}}_{"
-        + str(pos_i)
-        + ", j, "
-        + str(head)
-        + "}"
-        + "+ T^{\\text{p}}_{j, "
-        + str(head)
-        + "}$",
-        y=0.80,
-        x=0.006,
-        loc="left",
-    )
-    axes[1].set_title(
-        "$\\text{softmax}_j\\frac{T^{\\text{pp}}_{"
-        + str(pos_i)
-        + ", j, "
-        + str(head)
-        + "}"
-        + " + T^{\\text{p}}_{j, "
-        + str(head)
-        + "}}{\\sqrt{d'}}$",
-        y=0.7,
-        x=0.006,
-        fontdict={"fontsize": 100},
-        loc="left",
-    )
-
-    # Labels
-    axes[0].set_ylabel("")
-    axes[1].set_ylabel("")
-    axes[1].set_xlabel("Past token position ($j$)")
-
-    # Ticks
-    axes[0].xaxis.set_tick_params(
-        width=linewidth, length=linewidth * 2, direction="out"
-    )
-    axes[0].yaxis.set_tick_params(
-        width=linewidth, length=linewidth * 2, direction="out"
-    )
-    axes[1].xaxis.set_tick_params(
-        width=linewidth, length=linewidth * 2, direction="out"
-    )
-    axes[1].yaxis.set_tick_params(
-        width=linewidth, length=linewidth * 2, direction="out"
-    )
-
+    fig.align_ylabels()
     # Save
+    head_str = "-".join(map(str, heads))
     fig.savefig(
-        save_dir.joinpath(f"l0tptpp_head-{head}_posi-{pos_i}.pdf"), bbox_inches="tight"
+        save_dir.joinpath(f"l0tptpp_head-{head_str}_posi-{pos_i}.pdf"),
+        bbox_inches="tight",
     )
+    print("saved at:", save_dir.joinpath(f"l0tptpp_head-{head_str}_posi-{pos_i}.pdf"))
 
 
-def both_score_vis_all_heads(wpe, model_name, var_matrix):
+def both_score_vis_all_heads(
+    wpe: TensorType[POS, HIDDEN_DIM],
+    model_name: str,
+    var_matrix: TensorType[POS, VOCAB],
+):
     self_score = compute_self_score(
         j=wpe.unsqueeze(0),
         w=EQGPT2LMHeadModel.from_pretrained(model_name)
@@ -211,10 +237,10 @@ def main(
     model_name: str,
     wpe: TensorType[POS, HIDDEN_DIM],
     var_matrix: TensorType[POS, VOCAB],
-    head: int,
+    heads: list[int],
     **kwargs,
 ) -> None:
-    if head == -1:
+    if heads == [-1]:
         both_score_vis_all_heads(
             wpe=wpe,
             model_name=model_name,
@@ -225,6 +251,6 @@ def main(
             wpe=wpe,
             model_name=model_name,
             var_matrix=var_matrix,
-            head=head,
+            heads=heads,
             pos_i=kwargs["pos_i"],
         )

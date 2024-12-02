@@ -214,6 +214,7 @@ def compare_score_vis(
     head_str = "-".join(map(str, heads))
 
     fig.savefig(save_dir.joinpath(f"l0tee_head-{head_str}.png"), bbox_inches="tight")
+    print("saved at: ", save_dir.joinpath(f"l0tee_head-{head_str}.png"))
     # fig.savefig("compare_tok_score.png", bbox_inches="tight")
     # fig.savefig("compare_tok_score.pdf", bbox_inches="tight")
 
@@ -222,11 +223,11 @@ def main(
     model_name: str,
     wte: TensorType[VOCAB, HIDDEN_DIM],
     var_matrix: TensorType[POS, VOCAB],
-    head: int,
+    heads: list[int],
     n_samples: int,
     **kwargs,
 ) -> None:
-    if head == -1:
+    if heads == [-1]:
         compare_score_vis_all_heads(
             wte=wte,
             model_name=model_name,
@@ -238,6 +239,6 @@ def main(
             wte=wte,
             model_name=model_name,
             var_matrix=var_matrix,
-            heads=head,
+            heads=heads,
             n_samples=n_samples,
         )

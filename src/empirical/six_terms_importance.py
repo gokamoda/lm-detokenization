@@ -18,7 +18,9 @@ from utils.mytorchtyping import (
     HEAD,
     HIDDEN_DIM,
     LAYER,
+    POS,
     SEQUENCE,
+    VOCAB,
 )
 from utils.path import WORK_DIR
 
@@ -31,7 +33,14 @@ linewidth = 10
 NUM_INSTANCES = 5000
 
 
-def compute_6terms(prompt, tokenizer, wte, wpe, w_compare, w_self):
+def compute_6terms(
+    prompt: str,
+    tokenizer: GPT2Tokenizer,
+    wte: TensorType[VOCAB, HIDDEN_DIM],
+    wpe: TensorType[POS, HIDDEN_DIM],
+    w_compare: TensorType[HEAD, HIDDEN_DIM, HIDDEN_DIM],
+    w_self: TensorType[HEAD, HIDDEN_DIM],
+):
     tokens = tokenizer(prompt, return_tensors="pt")
 
     if tokens.input_ids.shape[1] > 1024:
@@ -214,7 +223,7 @@ def vis():
             }
         )
 
-        fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(34, 20))
+        fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(30, 20))
 
         sns.lineplot(
             data=df,

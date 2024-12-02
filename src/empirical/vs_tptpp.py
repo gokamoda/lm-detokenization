@@ -29,7 +29,7 @@ linewidth = 10
 save_dir = WORK_DIR.joinpath("attn_l0")
 save_dir.mkdir(exist_ok=True, parents=True)
 
-num_instances = 50
+num_instances = 100
 
 
 def main():
@@ -191,7 +191,7 @@ def vis():
     fig, axes = plt.subplots(figsize=(40, 20), nrows=2, ncols=2, sharex="col")
 
     tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
-    heads = [7, 1]
+    heads = [1, 7]
     heads_str = "-".join(map(str, heads))
 
     target_length = 500
@@ -211,6 +211,7 @@ def vis():
         vis_theoretical(
             axes[ax], target_length=target_length, head=head, begin_offset=485
         )
+        axes[ax][0].set_ylabel(f"Head {head}")
 
     save_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(save_path, bbox_inches="tight")

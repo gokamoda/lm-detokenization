@@ -320,7 +320,9 @@ class EQGPT2Attention(nn.Module):
 
         return wvo, bvo
 
-    def compute_wqk(self, c_attn: Conv1D):
+    def compute_wqk(
+        self, c_attn: Conv1D
+    ) -> tuple[TensorType[HEAD, HIDDEN_DIM, HIDDEN_DIM], TensorType[HEAD, HIDDEN_DIM]]:
         """Pre-compute wqk."""
         wq = c_attn.weight[:, : self.embed_dim]
         wk = c_attn.weight[:, self.embed_dim : self.embed_dim * 2]

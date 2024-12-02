@@ -119,7 +119,7 @@ def self_score_vis(
     ) / var_matrix.T.unsqueeze(0).unsqueeze(0)
 
     for h, head in enumerate(heads):
-        ax = axes[0, h]
+        ax = axes[h, 0]
         df = pl.DataFrame(
             {
                 "idx": list(range(self_score.shape[-1])),
@@ -144,7 +144,7 @@ def self_score_vis(
         ax.xaxis.set_tick_params(width=linewidth, length=linewidth * 2, direction="out")
         ax.axhline(0, color="black", linewidth=linewidth / 3, linestyle="--")
 
-        ax = axes[1, h]
+        ax = axes[h, 1]
         ax.scatter(data=df, x="count", y="score_ln", alpha=0.1, marker=".")
         ax.set_xscale("log")
         ax.set_title(
@@ -161,10 +161,15 @@ def self_score_vis(
         print("count vs score_ln", spearmanr(df["count"], df["score_ln"]))
         print("score_ln vs score", spearmanr(df["score_ln"], df["score"]))
 
-    fig.supxlabel("Token ($j$) Count", y=-0.05)
+        if h == 1:
+            axes[h, 0].set_xlabel("Token ($j$) Count")
+            axes[h, 1].set_xlabel("Token ($j$) Count")
+
+        axes[h, 0].set_ylabel(f"Head {head}")
 
     head_str = "-".join(map(str, heads))
     fig.savefig(save_dir.joinpath(f"l0te_head-{head_str}.png"), bbox_inches="tight")
+    print("saved at:", save_dir.joinpath(f"l0te_head-{head_str}.png"))
 
 
 def main(
@@ -172,12 +177,12 @@ def main(
     wpe: TensorType[POS, HIDDEN_DIM],
     wte: TensorType[VOCAB, HIDDEN_DIM],
     var_matrix: TensorType[POS, VOCAB],
-    head: int | list[int],
+    heads: list[int],
     **kwargs,
 ) -> None:
     counter = torch.load("freqs/token/openwebtext_gpt2.pt", weights_only=True)
 
-    if head == -1:
+    if heads == [-1]:
         self_score_vis_all_heads(
             wte=wte,
             model_name=model_name,
@@ -189,7 +194,7 @@ def main(
         self_score_vis(
             wte=wte,
             model_name=model_name,
-            heads=head,
+            heads=heads,
             max_pos=wpe.shape[0],
             var_matrix=var_matrix,
             counter=counter,

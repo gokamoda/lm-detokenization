@@ -8,7 +8,7 @@ from utils.mytorchtyping import POS, VOCAB
 
 
 def get_fig_axes_nrows2() -> tuple[plt.Figure, list[plt.Axes]]:
-    fig, axes = plt.subplots(nrows=2, figsize=(40, 20), sharex=True)
+    fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(40, 20), sharex="col")
     return fig, axes
 
 
