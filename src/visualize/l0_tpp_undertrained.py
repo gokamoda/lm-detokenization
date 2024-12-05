@@ -24,10 +24,11 @@ save_dir.mkdir(exist_ok=True, parents=True)
 def main(
     wpe: TensorType[POS, HIDDEN_DIM],
     model_name: str,
-    head: int,
+    heads: list[int],
     **kwargs,
 ) -> None:
     del kwargs
+    head = heads[0]
     fig, ax = plt.subplots(1, 1, figsize=(32, 10))
 
     compare_score: TensorType[1, HEAD, POS, POS] = compute_compare_score(
@@ -74,7 +75,9 @@ def main(
         loc="left",
         x=0.01,
     )
+    ax.set_ylabel("")
     ax.xaxis.set_tick_params(width=linewidth, length=linewidth * 2, direction="out")
     ax.xaxis.set_tick_params(width=linewidth, length=linewidth * 2, direction="out")
     ax.set_xlabel("Past token position ($j$)")
     fig.savefig(save_dir.joinpath(f"undertrained_head-{head}.pdf"), bbox_inches="tight")
+    print("saved at:", save_dir.joinpath(f"undertrained_head-{head}.pdf"))

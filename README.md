@@ -51,6 +51,14 @@ uv sync --dev --no-build-isolation
         --heads 1 7
     ```
 
+- Undertrained pos emb
+    ```
+    python src/visualize.py \
+        --mode l0_tpp_undertrained \
+        --heads 0
+    ```
+
+
 ## Frequency
 ```
 python src/frequency.py \
