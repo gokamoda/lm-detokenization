@@ -1,8 +1,10 @@
 
 
 # GPT2 Detokenization
-This repository contains code for the paper `Weight-based Analysis of Detokenization in Language Models:
-Understanding the First Stage of Inference Without Inference` by Go Kamoda, Benjamin Heinzerling, Tatsuro Inaba, Keito Kudo, Keisuke Sakaguchi and Kentaro Inui.
+This repository contains code for the paper  
+[Weight-based Analysis of Detokenization in Language Models:
+Understanding the First Stage of Inference Without Inference](https://arxiv.org/abs/2501.15754)  
+by Go Kamoda, Benjamin Heinzerling, Tatsuro Inaba, Keito Kudo, Keisuke Sakaguchi and Kentaro Inui.
 
 ## Create environment
 
