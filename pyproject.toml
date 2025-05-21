@@ -12,17 +12,16 @@ dependencies = [
     "matplotlib>=3.9.2",
     "polars>=1.12.0",
     "rich>=13.9.4",
-    "torch==2.5.1",
     "seaborn>=0.13.2",
     "torchtyping>=0.1.5",
     "transformers>=4.46.2",
     "wordfreq>=3.1.1",
     "tiktoken>=0.8.0",
     "protobuf==3.20.3",
-    "sentencepiece>=0.2.0",
     "scipy>=1.14.1",
     "python-dotenv>=1.0.1",
     "scikit-learn>=1.5.2",
+    "sentencepiece>=0.2.0",
 ]
 
 [tool.uv]
@@ -34,6 +33,53 @@ dev-dependencies = [
     "pytest>=8.3.3",
     "ruff>=0.6.6",
 ]
+
+conflicts = [
+  [
+    { extra = "default" },
+    { extra = "cpu" },
+    { extra = "cu118" },
+    { extra = "cu121" },
+  ],
+]
+
+[project.optional-dependencies]
+default = [
+  "torch==2.7.0",
+]
+cpu = [
+  "torch==2.5.1",
+]
+cu118 = [
+  "torch==2.5.1",
+]
+cu121 = [
+  "torch==2.5.1",
+]
+
+[tool.uv.sources]
+torch = [
+  { index = "pytorch-cpu", extra = "cpu" },
+  { index = "pytorch-cu118", extra = "cu118" },
+  { index = "pytorch-cu121", extra = "cu121" },
+]
+
+hfdecoderutils = { git = "https://github.com/gokamoda/lm_generation_cheatsheet.git", rev = "23796e8" }
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu121"
+url = "https://download.pytorch.org/whl/cu121"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu118"
+url = "https://download.pytorch.org/whl/cu118"
+explicit = true
 
 
 [tool.ruff]
