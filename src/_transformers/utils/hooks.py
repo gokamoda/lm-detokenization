@@ -3,6 +3,9 @@ from dataclasses import dataclass, fields, make_dataclass
 import torch
 from torch import nn
 from torch.utils.hooks import RemovableHandle
+from torchtyping import TensorType
+
+from utils.mytorchtyping import BATCH, HEAD, HIDDEN_DIM, SEQUENCE
 
 
 class ObservationHook(nn.Module):
@@ -127,3 +130,9 @@ class AbstractBatchResult(AbstractResult):
                 return v.shape[0]
             elif isinstance(v, AbstractBatchResult):
                 return v.get_batch_size()
+
+
+@dataclass(repr=False, init=False)
+class BatchAttentionObservationResult(AbstractBatchResult):
+    attn_scores: TensorType[BATCH, HEAD, SEQUENCE, SEQUENCE]
+    weighted_value: TensorType[BATCH, HEAD, SEQUENCE, SEQUENCE, HIDDEN_DIM]

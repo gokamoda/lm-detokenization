@@ -9,8 +9,11 @@ from torchtyping import TensorType
 from tqdm import tqdm
 from transformers import AutoModelForCausalLM, GPT2LMHeadModel, GPT2Tokenizer
 
-from eqmodels import EQGPT2LMHeadModel
-from eqmodels.gpt2 import compute_compare_score, compute_self_score
+from _transformers.models import EQGPT2LMHeadModel
+from _transformers.models.gpt2.modeling_gpt2 import (
+    compute_compare_score,
+    compute_self_score,
+)
 from utils.ln import get_var_matrix, ln_pos
 from utils.mylogger import init_logging
 from utils.mytorchtyping import HEAD, HIDDEN_DIM, POS, VOCAB

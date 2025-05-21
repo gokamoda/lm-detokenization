@@ -9,7 +9,7 @@ from transformers.models.gpt2.modeling_gpt2 import (
     GPT2LMHeadModel,
 )
 
-from .gpt2 import (
+from _transformers.models.gpt2.modeling_gpt2 import (
     EQGPT2MLP,
     EQGPT2Attention,
     EQGPT2Block,

@@ -6,8 +6,11 @@ from torchtyping import TensorType
 from tqdm import tqdm
 from transformers import AutoModelForCausalLM
 
-from eqmodels import EQGPT2LMHeadModel
-from eqmodels.gpt2 import compute_compare_score
+from _transformers.models import EQGPT2LMHeadModel
+from _transformers.models.gpt2.modeling_gpt2 import (
+    compute_compare_score,
+    compute_self_score,
+)
 from utils.mytorchtyping import HEAD, HIDDEN_DIM, POS, VOCAB
 
 from .subplots import get_fig_axes_nrows2, plot_lineplot_ln, plot_lineplot_noln

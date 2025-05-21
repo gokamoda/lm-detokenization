@@ -6,8 +6,11 @@ import torch
 from scipy.stats import spearmanr
 from transformers import AutoModelForCausalLM
 
-from eqmodels import EQGPT2LMHeadModel
-from eqmodels.gpt2 import compute_compare_score, compute_self_score
+from _transformers.models import EQGPT2LMHeadModel
+from _transformers.models.gpt2.modeling_gpt2 import (
+    compute_compare_score,
+    compute_self_score,
+)
 
 plt.rc("font", size=70)
 plt.rcParams["axes.xmargin"] = 0.01

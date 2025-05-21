@@ -9,8 +9,8 @@ from torchtyping import TensorType
 from tqdm import tqdm
 from transformers import GPT2Tokenizer
 
-from eqmodels import EQGPT2LMHeadModel
-from eqmodels.gpt2 import (
+from _transformers import EQGPT2LMHeadModel
+from _transformers.models.gpt2.modeling_gpt2 import (
     compute_compare_score,
     compute_self_score,
 )

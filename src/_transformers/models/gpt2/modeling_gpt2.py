@@ -1,5 +1,3 @@
-from typing import Tuple
-
 import torch
 from torch import Tensor, nn
 from torchtyping import TensorType
@@ -12,9 +10,8 @@ from transformers.models.gpt2.modeling_gpt2 import (
 )
 from transformers.pytorch_utils import Conv1D
 
+from _transformers.utils.hooks import InterventionHook, ObservationHook
 from utils.mytorchtyping import BATCH, HEAD, HIDDEN_DIM, SEQUENCE
-
-from .utils.hooks import InterventionHook, ObservationHook
 
 torch.set_printoptions(sci_mode=False)
 
