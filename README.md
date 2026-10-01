@@ -9,8 +9,7 @@ by Go Kamoda, Benjamin Heinzerling, Tatsuro Inaba, Keito Kudo, Keisuke Sakaguchi
 ## Create environment
 
 ```
-uv sync --no-dev
-uv sync --dev --no-build-isolation
+make install
 ```
 
 ## Visualizations
