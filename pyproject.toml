@@ -24,8 +24,8 @@ dependencies = [
     "sentencepiece>=0.2.0",
 ]
 
-[tool.uv]
-dev-dependencies = [
+[dependency-groups]
+dev = [
     "ipython>=8.29.0",
     "jupyter>=1.1.1",
     "mypy>=1.11.2",
@@ -34,37 +34,31 @@ dev-dependencies = [
     "ruff>=0.6.6",
 ]
 
+[tool.uv]
 conflicts = [
   [
-    { extra = "default" },
     { extra = "cpu" },
-    { extra = "cu118" },
-    { extra = "cu121" },
+    { extra = "gpu" },
   ],
 ]
 
 [project.optional-dependencies]
-default = [
-  "torch==2.7.0",
-]
-cpu = [
-  "torch==2.5.1",
-]
-cu118 = [
-  "torch==2.5.1",
-]
-cu121 = [
-  "torch==2.5.1",
-]
+cpu = ["torch==2.7.0"]
+gpu = ["torch==2.7.0"]
 
 [tool.uv.sources]
 torch = [
-  { index = "pytorch-cpu", extra = "cpu" },
-  { index = "pytorch-cu118", extra = "cu118" },
-  { index = "pytorch-cu121", extra = "cu121" },
+  { index = "pytorch-cpu-mac", extra = "cpu", marker = "platform_system == 'macOS'" },
+  { index = "pytorch-cpu", extra = "cpu", marker = "platform_system != 'macOS'" },
+  { index = "pytorch-gpu", extra = "gpu" },
 ]
 
 hfdecoderutils = { git = "https://github.com/gokamoda/lm_generation_cheatsheet.git", rev = "23796e8" }
+
+[[tool.uv.index]]
+name = "pytorch-cpu-mac"
+url = "https://pypi.python.org/simple"
+explicit = true
 
 [[tool.uv.index]]
 name = "pytorch-cpu"
@@ -72,13 +66,8 @@ url = "https://download.pytorch.org/whl/cpu"
 explicit = true
 
 [[tool.uv.index]]
-name = "pytorch-cu121"
-url = "https://download.pytorch.org/whl/cu121"
-explicit = true
-
-[[tool.uv.index]]
-name = "pytorch-cu118"
-url = "https://download.pytorch.org/whl/cu118"
+name = "pytorch-gpu"
+url = "https://download.pytorch.org/whl/cu126"
 explicit = true
 
 
