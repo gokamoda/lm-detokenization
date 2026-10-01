@@ -6,9 +6,10 @@ import polars as pl
 import torch
 from sklearn.metrics import roc_auc_score, roc_curve
 from torchtyping import TensorType
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig
 
-from eqmodels.gpt2 import EQGPT2LMHeadModel, compute_compare_score
+from _transformers.models import AutoEQCausalLM_from_pretrained
+from _transformers.models.gpt2.modeling_gpt2 import compute_compare_score
 from utils.ln import get_var_matrix
 from utils.mylogger import init_logging
 from utils.mytorchtyping import HEAD, HIDDEN_DIM, POS, VOCAB
@@ -22,8 +23,6 @@ logger = init_logging(__name__, log_path=LOG_PATH, clear=True)
 
 
 class DetokenizationDataRetriever:
-    offset = 0
-
     def __init__(
         self,
         model_name: str = "gpt2",
@@ -35,13 +34,16 @@ class DetokenizationDataRetriever:
         self.verbose = verbose
         self.counter = counter
 
-        wpe: TensorType[POS, HIDDEN_DIM] = (
-            AutoModelForCausalLM.from_pretrained(model_name)
-            .transformer.wpe.weight.detach()
-            .cpu()
-        )
+        model_config = AutoConfig.from_pretrained(model_name)
+        
+        if "gpt2" in model_name.lower():
+            wpe: TensorType[POS, HIDDEN_DIM] = (
+                AutoEQCausalLM_from_pretrained(model_name)
+                .transformer.wpe.weight.detach()
+                .cpu()
+            )
         wte: TensorType[VOCAB, HIDDEN_DIM] = (
-            AutoModelForCausalLM.from_pretrained(model_name)
+            AutoEQCausalLM_from_pretrained(model_name)
             .transformer.wte.weight.detach()
             .cpu()
         )
@@ -51,14 +53,14 @@ class DetokenizationDataRetriever:
         self.wte: TensorType[VOCAB, HIDDEN_DIM] = wte / var_matrix.unsqueeze(-1)
 
         self.wqkh = (
-            EQGPT2LMHeadModel.from_pretrained(model_name)
+            AutoEQCausalLM_from_pretrained(model_name)
             .transformer.h[0]
             .attn.wqkh.detach()
         )
 
         self.print_fc = print_fc
 
-    def get_detokenization_scores(
+    def get_detokenization_scores_suffix(
         self,
         suffix_id: int,
         wte: TensorType[VOCAB, HIDDEN_DIM],
@@ -67,16 +69,29 @@ class DetokenizationDataRetriever:
         scores: TensorType[HEAD, VOCAB] = compute_compare_score(
             i=wte[0, suffix_id : suffix_id + 1].unsqueeze(0), j=wte, w=wqkh.detach()
         ).squeeze()
+        print(f"{scores.shape=}")
+        return scores
+    
+    def get_detokenization_scores_prefix(
+        self,
+        prefix_id: int,
+        wte: TensorType[VOCAB, HIDDEN_DIM],
+        wqkh: TensorType[HEAD, HIDDEN_DIM, HIDDEN_DIM],
+    ) -> TensorType[HEAD, VOCAB]:
+        print(f"{wte.shape=}")
+        scores: TensorType[HEAD, VOCAB] = compute_compare_score(
+            i=wte, j=wte[0, prefix_id : prefix_id + 1].unsqueeze(0), w=wqkh.detach()
+        ).squeeze()
         return scores
 
-    def search_from_str(self, query: str):
-        suffix_id = self.tokenizer.encode(query)[-1 - self.offset]
+    def search_from_str_suffix(self, query: str, position: int = -1) -> pl.DataFrame:
+        suffix_id = self.tokenizer.encode(query)[position]
         if self.verbose:
             self.print_fc(f'suffix: "{self.tokenizer.decode(suffix_id)}" ({suffix_id})')
-        return self.search_from_id(suffix_id)
+        return self.search_from_id_suffix(suffix_id)
 
-    def search_from_id(self, suffix_id: int) -> pl.DataFrame:
-        scores: TensorType[HEAD, VOCAB] = self.get_detokenization_scores(
+    def search_from_id_suffix(self, suffix_id: int) -> pl.DataFrame:
+        scores: TensorType[HEAD, VOCAB] = self.get_detokenization_scores_suffix(
             suffix_id, self.wte.unsqueeze(0), self.wqkh
         )
         n_head, n_vocab = scores.shape
@@ -92,6 +107,33 @@ class DetokenizationDataRetriever:
         if self.counter is not None:
             counts = [
                 self.counter[(prefix_id, suffix_id)] for prefix_id in range(n_vocab)
+            ]
+            df = df.with_columns(pl.Series("count", np.tile(counts, n_head)))
+        return df
+    
+    def search_from_str_prefix(self, query: str, position: int = 0) -> pl.DataFrame:
+        prefix_id = self.tokenizer.encode(query)[position]
+        if self.verbose:
+            self.print_fc(f'prefix: "{self.tokenizer.decode(prefix_id)}" ({prefix_id})')
+        return self.search_from_id_prefix(prefix_id)
+    
+    def search_from_id_prefix(self, prefix_id: int) -> pl.DataFrame:
+        scores: TensorType[HEAD, VOCAB] = self.get_detokenization_scores_prefix(
+            prefix_id, self.wte.unsqueeze(0), self.wqkh
+        )
+        n_head, n_vocab = scores.shape
+        df = pl.DataFrame(
+            {
+                "prefix_id": np.repeat(prefix_id, n_head * n_vocab),
+                "suffix_id": np.tile(range(n_vocab), n_head),
+                "head": np.repeat(range(n_head), n_vocab),
+                "score": scores.cpu().numpy().flatten(),
+            }
+        )
+
+        if self.counter is not None:
+            counts = [
+                self.counter[(prefix_id, suffix_id)] for suffix_id in range(n_vocab)
             ]
             df = df.with_columns(pl.Series("count", np.tile(counts, n_head)))
         return df

@@ -13,3 +13,6 @@ LAYER = None
 VOCAB = None
 BATCHxHEAD = None
 POS = None
+HEAD_Q = None
+HEAD_KV = None
+NHEADxDHEAD = None

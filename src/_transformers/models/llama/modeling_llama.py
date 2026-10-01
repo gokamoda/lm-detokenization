@@ -24,6 +24,7 @@ from transformers.models.llama.modeling_llama import (
     LlamaDecoderLayer,
     LlamaForCausalLM,
     LlamaRMSNorm,
+    LlamaRotaryEmbedding,
     apply_rotary_pos_emb,
 )
 from transformers.processing_utils import Unpack
@@ -391,6 +392,29 @@ class EQLlamaPreTrainedModel(PreTrainedModel):
                 module.weight.data[module.padding_idx].zero_()
 
 
+class EQLlamaModel(EQLlamaPreTrainedModel):
+
+    def __init__(self, config: LlamaConfig):
+        super().__init__(config)
+        self.padding_idx = config.pad_token_id
+        self.vocab_size = config.vocab_size
+
+        self.embed_tokens = nn.Embedding(config.vocab_size, config.hidden_size, self.padding_idx)
+        self.layers = nn.ModuleList(
+            [LlamaDecoderLayer(config, layer_idx) for layer_idx in range(config.num_hidden_layers)]
+        )
+        self.norm = LlamaRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
+        self.rotary_emb = LlamaRotaryEmbedding(config=config)
+        self.gradient_checkpointing = False
+
+        # Initialize weights and apply final processing
+        self.post_init()
+
+    @property
+    def wte(self):
+        return self.embed_tokens
+
+
 class EQLlamaForCausalLM(LlamaForCausalLM):
     _tied_weights_keys = ["lm_head.weight"]
     _tp_plan = {"lm_head": "colwise_rep"}
@@ -398,6 +422,12 @@ class EQLlamaForCausalLM(LlamaForCausalLM):
 
     def __init__(self, config):
         super().__init__(config)
+        self.model = EQLlamaModel(config)
+        self.vocab_size = config.vocab_size
+        self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
+
+        # Initialize weights and apply final processing
+        self.post_init()
 
     @classmethod
     def from_pretrained(
@@ -421,3 +451,9 @@ class EQLlamaForCausalLM(LlamaForCausalLM):
         )
 
         return model
+    
+    @property
+    def transformer(self):
+        return self.model
+    
+

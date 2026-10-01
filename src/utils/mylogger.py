@@ -5,6 +5,7 @@ from pathlib import Path
 from rich.logging import RichHandler
 
 
+
 def init_logging(
     logger_name: str, log_path: str = "logs/info.log", clear=False
 ) -> logging.Logger:
