@@ -18,3 +18,8 @@ freqs
 
 *.log
 *.png
+
+# Agent instructions and settings (local only)
+AGENTS.md
+CLAUDE.md
+.claude/
