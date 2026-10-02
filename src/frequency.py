@@ -66,9 +66,12 @@ def get_dataset(dataset_name: str) -> IterableDataset:
             streaming=True,
         )
     if dataset_name == "openwebtext":
-        return load_dataset(
-            "openwebtext", trust_remote_code=True, split="train", streaming=True
-        )
+        # OpenWebText was "openwebtext" on the HF hub when the paper was written
+        # (Nov 2024), as a loading-script dataset. It has since been converted to
+        # parquet (Dec 2025), and huggingface-hub>=1.0 requires the "namespace/name"
+        # form. We have not checked that its contents are the same as in the
+        # published version. trust_remote_code is no longer needed for parquet.
+        return load_dataset("Skylion007/openwebtext", split="train", streaming=True)
     raise ValueError(f"Unknown dataset: {dataset_name}")
 
 

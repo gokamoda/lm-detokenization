@@ -105,7 +105,7 @@ def main():
         done_ids = kls_df["instance_id"].unique().to_list()
         print(f"Already done: {len(done_ids)}")
 
-    for r, row in tqdm(enumerate(get_data())):
+    for r, row in tqdm(enumerate(get_data(NUM_INSTANCES))):
         if r in done_ids:
             print(f"Skipping {r}")
             continue

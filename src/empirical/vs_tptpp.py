@@ -47,7 +47,7 @@ def main():
     model = model.to(device)
     model.eval()
 
-    for i, row in tqdm(enumerate(get_data())):
+    for i, row in tqdm(enumerate(get_data(num_instances))):
         if i == num_instances:
             break
 
@@ -81,7 +81,7 @@ def main():
 def vis_empirical(axes, tokenizer, target_length=500, head=0, begin_offsets=0):
     logger.info("Collecting empirical attns")
     attns = []
-    for i, row in tqdm(enumerate(get_data())):
+    for i, row in tqdm(enumerate(get_data(num_instances))):
         if i == num_instances:
             break
         prompt = row["text"]
