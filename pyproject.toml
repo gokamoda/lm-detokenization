@@ -6,7 +6,7 @@ authors = [
     {name = "gokamoda", email = "gokamoda@gmail.com"},
 ]
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 dependencies = [
     "datasets>=3.1.0",
     "matplotlib>=3.9.2",
@@ -14,7 +14,8 @@ dependencies = [
     "rich>=13.9.4",
     "seaborn>=0.13.2",
     "torchtyping>=0.1.5",
-    "transformers>=4.46.2",
+    "transformers>=5.4.0",
+    "feature-extractor",
     "wordfreq>=3.1.1",
     "tiktoken>=0.8.0",
     "protobuf==3.20.3",
@@ -53,6 +54,7 @@ torch = [
   { index = "pytorch-gpu", extra = "gpu" },
 ]
 
+feature-extractor = { git = "https://github.com/gokamoda/transformer-feature-extractor.git", rev = "73847a2" }
 hfdecoderutils = { git = "https://github.com/gokamoda/lm_generation_cheatsheet.git", rev = "23796e8" }
 
 [[tool.uv.index]]
@@ -74,7 +76,7 @@ explicit = true
 [tool.ruff]
 exclude = [".git", ".mypy_cache", ".ruff_cache", ".venv", "third_party"]
 line-length = 88
-target-version = "py311"
+target-version = "py312"
 
 [tool.ruff.lint]
 fixable = ["ALL"]

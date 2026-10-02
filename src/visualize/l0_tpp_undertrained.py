@@ -7,13 +7,9 @@ import seaborn as sns
 import torch
 from torchtyping import TensorType
 from tqdm import tqdm
-from transformers import AutoModelForCausalLM
 
-from _transformers.models import EQGPT2LMHeadModel
-from _transformers.models.gpt2.modeling_gpt2 import (
-    compute_compare_score,
-    compute_self_score,
-)
+from qk.scores import compute_compare_score, compute_self_score
+from qk.weights import QKWeights
 from utils.mytorchtyping import HEAD, HIDDEN_DIM, POS, VOCAB
 
 plt.rc("font", size=70)
@@ -26,7 +22,7 @@ save_dir.mkdir(exist_ok=True, parents=True)
 
 def main(
     wpe: TensorType[POS, HIDDEN_DIM],
-    model_name: str,
+    qk_weights: QKWeights,
     heads: list[int],
     **kwargs,
 ) -> None:
@@ -37,10 +33,7 @@ def main(
     compare_score: TensorType[1, HEAD, POS, POS] = compute_compare_score(
         i=wpe.unsqueeze(0),
         j=wpe.unsqueeze(0),
-        w=EQGPT2LMHeadModel.from_pretrained(model_name)
-        .transformer.h[0]
-        .attn.wqkh.detach()
-        .cpu(),
+        w=qk_weights.w_qk,
     )
 
     n = 5

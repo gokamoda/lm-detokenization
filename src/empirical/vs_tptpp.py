@@ -7,13 +7,11 @@ import torch
 from datasets import load_dataset
 from torchtyping import TensorType
 from tqdm import tqdm
-from transformers import AutoModelForCausalLM, GPT2LMHeadModel, GPT2Tokenizer
+from feature_extractor.models import load_causal_model, load_tokenizer
+from transformers import GPT2LMHeadModel
 
-from _transformers.models import EQGPT2LMHeadModel
-from _transformers.models.gpt2.modeling_gpt2 import (
-    compute_compare_score,
-    compute_self_score,
-)
+from qk.scores import compute_compare_score, compute_self_score
+from qk.weights import get_position_embedding, get_qk_weights, get_word_embedding
 from utils.ln import get_var_matrix, ln_pos
 from utils.mylogger import init_logging
 from utils.mytorchtyping import HEAD, HIDDEN_DIM, POS, VOCAB
@@ -38,7 +36,9 @@ num_instances = 100
 def main():
     model_name = "gpt2"
     model = GPT2LMHeadModel.from_pretrained(model_name, attn_implementation="eager")
-    tokenizer = GPT2Tokenizer.from_pretrained(model_name)
+    # load_tokenizer prepends <|endoftext|> to every prompt for gpt2.
+    # The published version (Figure 3E of the paper) used no <|endoftext|>.
+    tokenizer = load_tokenizer(model_name)
     if torch.cuda.is_available():
         device = "cuda:0"
     else:
@@ -57,7 +57,6 @@ def main():
             # continue
             pass
 
-        # prompt = "<|endoftext|>" + row["text"]
         prompt = row["text"]
         input_ids = tokenizer(prompt, return_tensors="pt").to(device)
 
@@ -85,7 +84,7 @@ def vis_empirical(axes, tokenizer, target_length=500, head=0, begin_offsets=0):
     for i, row in tqdm(enumerate(get_data())):
         if i == num_instances:
             break
-        prompt = "<|endoftext|>" + row["text"]
+        prompt = row["text"]
         if len(tokenizer.encode(prompt)) < target_length:
             continue
 
@@ -125,28 +124,17 @@ def vis_empirical(axes, tokenizer, target_length=500, head=0, begin_offsets=0):
 
 def vis_theoretical(axes, target_length=500, head=0, begin_offset=0):
     # add te + tee plot
-    model_name = "gpt2"
-
-    wpe = (
-        AutoModelForCausalLM.from_pretrained(model_name)
-        .transformer.wpe.weight.detach()
-        .cpu()
-    )
-    wte = (
-        AutoModelForCausalLM.from_pretrained(model_name)
-        .transformer.wte.weight.detach()
-        .cpu()
-    )
+    model = load_causal_model("gpt2")
+    wpe = get_position_embedding(model)
+    wte = get_word_embedding(model)
+    qk_weights = get_qk_weights(model, layer_index=0)
     var_matrix: TensorType[POS, VOCAB] = get_var_matrix(wpe=wpe, wte=wte)
     var_matrix = torch.sqrt(var_matrix + 1e-5)
     var_matrix = var_matrix.to(torch.float16)
 
     self_score: TensorType[1, HEAD, POS, POS] = compute_self_score(
         j=wpe.unsqueeze(0),
-        w=EQGPT2LMHeadModel.from_pretrained(model_name)
-        .transformer.h[0]
-        .attn.bqwkh.detach()
-        .cpu(),
+        w=qk_weights.b_qk,
     )
     self_score: TensorType[1, HEAD, POS, VOCAB] = ln_pos(
         x=self_score, var_matrix=var_matrix
@@ -155,10 +143,7 @@ def vis_theoretical(axes, target_length=500, head=0, begin_offset=0):
     compare_score: TensorType[1, HEAD, POS, POS] = compute_compare_score(
         i=wpe.unsqueeze(0),
         j=wpe.unsqueeze(0),
-        w=EQGPT2LMHeadModel.from_pretrained(model_name)
-        .transformer.h[0]
-        .attn.wqkh.detach()
-        .cpu(),
+        w=qk_weights.w_qk,
     )
 
     var_mean_i = var_matrix[target_length].mean(dim=-1)
@@ -193,7 +178,7 @@ def vis_theoretical(axes, target_length=500, head=0, begin_offset=0):
 def vis():
     fig, axes = plt.subplots(figsize=(40, 20), nrows=2, ncols=2, sharex="col")
 
-    tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+    tokenizer = load_tokenizer("gpt2")
     heads = [1, 7]
     heads_str = "-".join(map(str, heads))
 

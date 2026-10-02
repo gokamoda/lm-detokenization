@@ -7,13 +7,11 @@ import seaborn as sns
 import torch
 from torchtyping import TensorType
 from tqdm import tqdm
-from transformers import GPT2Tokenizer
+from feature_extractor.models import load_causal_model, load_tokenizer
+from transformers import PreTrainedTokenizerBase
 
-from _transformers import EQGPT2LMHeadModel
-from _transformers.models.gpt2.modeling_gpt2 import (
-    compute_compare_score,
-    compute_self_score,
-)
+from qk.scores import compute_compare_score, compute_self_score
+from qk.weights import get_position_embedding, get_qk_weights, get_word_embedding
 from utils.mytorchtyping import (
     HEAD,
     HIDDEN_DIM,
@@ -35,7 +33,7 @@ NUM_INSTANCES = 5000
 
 def compute_6terms(
     prompt: str,
-    tokenizer: GPT2Tokenizer,
+    tokenizer: PreTrainedTokenizerBase,
     wte: TensorType[VOCAB, HIDDEN_DIM],
     wpe: TensorType[POS, HIDDEN_DIM],
     w_compare: TensorType[HEAD, HIDDEN_DIM, HIDDEN_DIM],
@@ -87,31 +85,16 @@ def compute_6terms(
 
 def main():
     kls = []
-    tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
     model_name = "gpt2"
+    # load_tokenizer prepends <|endoftext|> to every prompt for gpt2
+    tokenizer = load_tokenizer(model_name)
+    model = load_causal_model(model_name)
 
-    wte = (
-        EQGPT2LMHeadModel.from_pretrained(model_name)
-        .transformer.wte.weight.detach()
-        .cpu()
-    )
-    wpe = (
-        EQGPT2LMHeadModel.from_pretrained(model_name)
-        .transformer.wpe.weight.detach()
-        .cpu()
-    )
-    w_compare = (
-        EQGPT2LMHeadModel.from_pretrained(model_name)
-        .transformer.h[0]
-        .attn.wqkh.detach()
-        .cpu()
-    )
-    w_self = (
-        EQGPT2LMHeadModel.from_pretrained(model_name)
-        .transformer.h[0]
-        .attn.bqwkh.detach()
-        .cpu()
-    )
+    wte = get_word_embedding(model)
+    wpe = get_position_embedding(model)
+    qk_weights = get_qk_weights(model, layer_index=0)
+    w_compare = qk_weights.w_qk
+    w_self = qk_weights.b_qk
 
     kls = []
     done_ids = []
@@ -129,8 +112,7 @@ def main():
 
         if r == NUM_INSTANCES:
             break
-        # https://github.com/openai/gpt-2/blob/a74da5d99abaaba920de8131d64da2862a8f213b/src/interactive_conditional_samples.py
-        prompt = "<|endoftext|>" + row["text"]
+        prompt = row["text"]
         scores = compute_6terms(
             prompt=prompt,
             tokenizer=tokenizer,

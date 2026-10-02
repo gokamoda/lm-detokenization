@@ -4,13 +4,9 @@ import matplotlib.pyplot as plt
 import torch
 from torchtyping import TensorType
 from tqdm import tqdm
-from transformers import AutoModelForCausalLM
 
-from _transformers.models import EQGPT2LMHeadModel
-from _transformers.models.gpt2.modeling_gpt2 import (
-    compute_compare_score,
-    compute_self_score,
-)
+from qk.scores import compute_compare_score, compute_self_score
+from qk.weights import QKWeights
 from utils.mytorchtyping import HEAD, HIDDEN_DIM, POS, VOCAB
 
 from .subplots import get_fig_axes_nrows2, plot_lineplot_ln, plot_lineplot_noln
@@ -25,7 +21,7 @@ save_dir.mkdir(exist_ok=True, parents=True)
 
 def compare_score_vis(
     wpe: TensorType[POS, HIDDEN_DIM],
-    model_name: str,
+    qk_weights: QKWeights,
     heads: list[int],
     var_matrix: TensorType[POS, VOCAB],
     pos_i: int,
@@ -35,10 +31,7 @@ def compare_score_vis(
     compare_score: TensorType[1, HEAD, POS, POS] = compute_compare_score(
         i=wpe.unsqueeze(0),
         j=wpe.unsqueeze(0),
-        w=EQGPT2LMHeadModel.from_pretrained(model_name)
-        .transformer.h[0]
-        .attn.wqkh.detach()
-        .cpu(),
+        w=qk_weights.w_qk,
     )
 
     for head_iterator_idx, head in enumerate(heads):
@@ -151,7 +144,7 @@ def compare_score_vis(
 
 def compare_score_vis_all_heads(
     wpe: TensorType[POS, HIDDEN_DIM],
-    model_name: str,
+    qk_weights: QKWeights,
     var_matrix: TensorType[POS, VOCAB],
 ) -> None:
     print("Visualizing TPP for all heads")
@@ -159,10 +152,7 @@ def compare_score_vis_all_heads(
     compare_score: TensorType[1, HEAD, POS, POS] = compute_compare_score(
         i=wpe.unsqueeze(0),
         j=wpe.unsqueeze(0),
-        w=EQGPT2LMHeadModel.from_pretrained(model_name)
-        .transformer.h[0]
-        .attn.wqkh.detach()
-        .cpu(),
+        w=qk_weights.w_qk,
     )
 
     # Prepare figure
@@ -225,7 +215,7 @@ def compare_score_vis_all_heads(
 
 
 def main(
-    model_name: str,
+    qk_weights: QKWeights,
     wpe: TensorType[POS, HIDDEN_DIM],
     var_matrix: TensorType[POS, VOCAB],
     heads: list[int],
@@ -234,13 +224,13 @@ def main(
     if heads == [-1]:
         compare_score_vis_all_heads(
             wpe=wpe,
-            model_name=model_name,
+            qk_weights=qk_weights,
             var_matrix=var_matrix,
         )
     else:
         compare_score_vis(
             wpe=wpe,
-            model_name=model_name,
+            qk_weights=qk_weights,
             var_matrix=var_matrix,
             heads=heads,
             pos_i=kwargs["pos_i"],

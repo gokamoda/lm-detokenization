@@ -7,11 +7,8 @@ from scipy.stats import spearmanr
 from torchtyping import TensorType
 from tqdm import tqdm
 
-from _transformers.models import EQGPT2LMHeadModel
-from _transformers.models.gpt2.modeling_gpt2 import (
-    compute_compare_score,
-    compute_self_score,
-)
+from qk.scores import compute_compare_score, compute_self_score
+from qk.weights import QKWeights
 from utils.mytorchtyping import HEAD, HIDDEN_DIM, POS, VOCAB
 
 plt.rc("font", size=70)
@@ -25,7 +22,7 @@ save_dir.mkdir(exist_ok=True, parents=True)
 def compare_score_vis_all_heads(
     wte: TensorType[VOCAB, HIDDEN_DIM],
     n_samples: int,
-    model_name: str,
+    qk_weights: QKWeights,
     var_matrix: TensorType[VOCAB, VOCAB],
 ):
     torch.manual_seed(42)
@@ -35,10 +32,7 @@ def compare_score_vis_all_heads(
     compare_score = compute_compare_score(
         i=wte_sampled.unsqueeze(0),
         j=wte_sampled.unsqueeze(0),
-        w=EQGPT2LMHeadModel.from_pretrained(model_name)
-        .transformer.h[0]
-        .attn.wqkh.detach()
-        .cpu(),
+        w=qk_weights.w_qk,
     )
 
     var_matrix = var_matrix[:, sampled_tokens]
@@ -125,7 +119,7 @@ def compare_score_vis_all_heads(
 def compare_score_vis(
     wte: TensorType[VOCAB, HIDDEN_DIM],
     n_samples: int,
-    model_name: str,
+    qk_weights: QKWeights,
     heads: list[int],
     var_matrix: TensorType[VOCAB, VOCAB],
 ):
@@ -137,10 +131,7 @@ def compare_score_vis(
     compare_score = compute_compare_score(
         i=wte_sampled.unsqueeze(0),
         j=wte_sampled.unsqueeze(0),
-        w=EQGPT2LMHeadModel.from_pretrained(model_name)
-        .transformer.h[0]
-        .attn.wqkh.detach()
-        .cpu(),
+        w=qk_weights.w_qk,
     )
 
     var_matrix = var_matrix[:, sampled_tokens]
@@ -223,7 +214,7 @@ def compare_score_vis(
 
 
 def main(
-    model_name: str,
+    qk_weights: QKWeights,
     wte: TensorType[VOCAB, HIDDEN_DIM],
     var_matrix: TensorType[POS, VOCAB],
     heads: list[int],
@@ -233,14 +224,14 @@ def main(
     if heads == [-1]:
         compare_score_vis_all_heads(
             wte=wte,
-            model_name=model_name,
+            qk_weights=qk_weights,
             var_matrix=var_matrix,
             n_samples=n_samples,
         )
     else:
         compare_score_vis(
             wte=wte,
-            model_name=model_name,
+            qk_weights=qk_weights,
             var_matrix=var_matrix,
             heads=heads,
             n_samples=n_samples,

@@ -2,8 +2,9 @@ from argparse import ArgumentParser
 
 import torch
 from torchtyping import TensorType
-from transformers import AutoModelForCausalLM
+from feature_extractor.models import load_causal_model
 
+from qk.weights import get_position_embedding, get_qk_weights, get_word_embedding
 from utils.ln import get_var_matrix
 from utils.mytorchtyping import HIDDEN_DIM, POS, VOCAB
 from visualize import (
@@ -69,22 +70,14 @@ if __name__ == "__main__":
         kwargs = {arg: getattr(args, arg) for arg in script["required_args"]}
 
     # prepare data
-    model_name = "gpt2"
-    wpe: TensorType[POS, HIDDEN_DIM] = (
-        AutoModelForCausalLM.from_pretrained(model_name)
-        .transformer.wpe.weight.detach()
-        .cpu()
-    )
-    wte: TensorType[VOCAB, HIDDEN_DIM] = (
-        AutoModelForCausalLM.from_pretrained(model_name)
-        .transformer.wte.weight.detach()
-        .cpu()
-    )
+    model = load_causal_model("gpt2")
+    wpe: TensorType[POS, HIDDEN_DIM] = get_position_embedding(model)
+    wte: TensorType[VOCAB, HIDDEN_DIM] = get_word_embedding(model)
     var_matrix = torch.sqrt(get_var_matrix(wpe, wte) + 1e-5).to(torch.float16)
 
     kwargs["wpe"] = wpe
     kwargs["wte"] = wte
     kwargs["var_matrix"] = var_matrix
-    kwargs["model_name"] = model_name
+    kwargs["qk_weights"] = get_qk_weights(model, layer_index=0)
 
     script["function"](**kwargs)

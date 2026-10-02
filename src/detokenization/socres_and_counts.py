@@ -6,10 +6,10 @@ import polars as pl
 import torch
 from sklearn.metrics import roc_auc_score, roc_curve
 from torchtyping import TensorType
-from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig
+from feature_extractor.models import load_causal_model, load_tokenizer
 
-from _transformers.models import AutoEQCausalLM_from_pretrained
-from _transformers.models.gpt2.modeling_gpt2 import compute_compare_score
+from qk.scores import compute_compare_score
+from qk.weights import get_position_embedding, get_qk_weights, get_word_embedding
 from utils.ln import get_var_matrix
 from utils.mylogger import init_logging
 from utils.mytorchtyping import HEAD, HIDDEN_DIM, POS, VOCAB
@@ -30,33 +30,19 @@ class DetokenizationDataRetriever:
         verbose: bool = False,
         print_fc=logger.info,
     ):
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        self.tokenizer = load_tokenizer(model_name)
         self.verbose = verbose
         self.counter = counter
 
-        model_config = AutoConfig.from_pretrained(model_name)
-        
-        if "gpt2" in model_name.lower():
-            wpe: TensorType[POS, HIDDEN_DIM] = (
-                AutoEQCausalLM_from_pretrained(model_name)
-                .transformer.wpe.weight.detach()
-                .cpu()
-            )
-        wte: TensorType[VOCAB, HIDDEN_DIM] = (
-            AutoEQCausalLM_from_pretrained(model_name)
-            .transformer.wte.weight.detach()
-            .cpu()
-        )
+        model = load_causal_model(model_name)
+        wpe: TensorType[POS, HIDDEN_DIM] = get_position_embedding(model)
+        wte: TensorType[VOCAB, HIDDEN_DIM] = get_word_embedding(model)
         var_matrix: TensorType[VOCAB] = (
             torch.sqrt(get_var_matrix(wpe, wte) + 1e-5).to(torch.float16).mean(dim=0)
         )
         self.wte: TensorType[VOCAB, HIDDEN_DIM] = wte / var_matrix.unsqueeze(-1)
 
-        self.wqkh = (
-            AutoEQCausalLM_from_pretrained(model_name)
-            .transformer.h[0]
-            .attn.wqkh.detach()
-        )
+        self.wqkh = get_qk_weights(model, layer_index=0).w_qk
 
         self.print_fc = print_fc
 
@@ -69,23 +55,21 @@ class DetokenizationDataRetriever:
         scores: TensorType[HEAD, VOCAB] = compute_compare_score(
             i=wte[0, suffix_id : suffix_id + 1].unsqueeze(0), j=wte, w=wqkh.detach()
         ).squeeze()
-        print(f"{scores.shape=}")
         return scores
-    
+
     def get_detokenization_scores_prefix(
         self,
         prefix_id: int,
         wte: TensorType[VOCAB, HIDDEN_DIM],
         wqkh: TensorType[HEAD, HIDDEN_DIM, HIDDEN_DIM],
     ) -> TensorType[HEAD, VOCAB]:
-        print(f"{wte.shape=}")
         scores: TensorType[HEAD, VOCAB] = compute_compare_score(
             i=wte, j=wte[0, prefix_id : prefix_id + 1].unsqueeze(0), w=wqkh.detach()
         ).squeeze()
         return scores
 
     def search_from_str_suffix(self, query: str, position: int = -1) -> pl.DataFrame:
-        suffix_id = self.tokenizer.encode(query)[position]
+        suffix_id = self.tokenizer.encode(query, add_special_tokens=False)[position]
         if self.verbose:
             self.print_fc(f'suffix: "{self.tokenizer.decode(suffix_id)}" ({suffix_id})')
         return self.search_from_id_suffix(suffix_id)
@@ -110,13 +94,13 @@ class DetokenizationDataRetriever:
             ]
             df = df.with_columns(pl.Series("count", np.tile(counts, n_head)))
         return df
-    
+
     def search_from_str_prefix(self, query: str, position: int = 0) -> pl.DataFrame:
-        prefix_id = self.tokenizer.encode(query)[position]
+        prefix_id = self.tokenizer.encode(query, add_special_tokens=False)[position]
         if self.verbose:
             self.print_fc(f'prefix: "{self.tokenizer.decode(prefix_id)}" ({prefix_id})')
         return self.search_from_id_prefix(prefix_id)
-    
+
     def search_from_id_prefix(self, prefix_id: int) -> pl.DataFrame:
         scores: TensorType[HEAD, VOCAB] = self.get_detokenization_scores_prefix(
             prefix_id, self.wte.unsqueeze(0), self.wqkh
@@ -144,5 +128,5 @@ def main():
     retriever = DetokenizationDataRetriever(
         model_name="gpt2", verbose=True, counter=counter
     )
-    df = retriever.search_from_str(" sapiens")
+    df = retriever.search_from_str_suffix(" sapiens")
     print(df)

@@ -4,11 +4,8 @@ import matplotlib.pyplot as plt
 from torchtyping import TensorType
 from tqdm import tqdm
 
-from _transformers.models import EQGPT2LMHeadModel
-from _transformers.models.gpt2.modeling_gpt2 import (
-    compute_compare_score,
-    compute_self_score,
-)
+from qk.scores import compute_compare_score, compute_self_score
+from qk.weights import QKWeights
 from utils.ln import ln_pos
 from utils.mytorchtyping import HEAD, HIDDEN_DIM, POS, VOCAB
 
@@ -24,16 +21,13 @@ save_dir.mkdir(exist_ok=True, parents=True)
 
 def self_score_vis(
     wpe: TensorType[POS, HIDDEN_DIM],
-    model_name: str,
+    qk_weights: QKWeights,
     heads: list[int],
     var_matrix: TensorType[POS, VOCAB],
 ) -> None:
     self_score: TensorType[1, HEAD, POS] = compute_self_score(
         j=wpe.unsqueeze(0),
-        w=EQGPT2LMHeadModel.from_pretrained(model_name)
-        .transformer.h[0]
-        .attn.bqwkh.detach()
-        .cpu(),
+        w=qk_weights.b_qk,
     )
 
     assert len(heads) <= 2
@@ -119,17 +113,14 @@ def self_score_vis(
 
 def self_score_vis_all_heads(
     wpe: TensorType[POS, HIDDEN_DIM],
-    model_name: str,
+    qk_weights: QKWeights,
     var_matrix: TensorType[POS, VOCAB],
 ) -> None:
     print("Visualizing TP for all heads")
 
     self_score: TensorType[1, HEAD, POS] = compute_self_score(
         j=wpe.unsqueeze(0),
-        w=EQGPT2LMHeadModel.from_pretrained(model_name)
-        .transformer.h[0]
-        .attn.bqwkh.detach()
-        .cpu(),
+        w=qk_weights.b_qk,
     )
 
     n_heads = self_score.shape[1]
@@ -174,7 +165,7 @@ def self_score_vis_all_heads(
 
 
 def main(
-    model_name: str,
+    qk_weights: QKWeights,
     wpe: TensorType[POS, HIDDEN_DIM],
     var_matrix: TensorType[POS, VOCAB],
     heads: list[int],
@@ -184,13 +175,13 @@ def main(
     if heads == [-1]:
         self_score_vis_all_heads(
             wpe=wpe,
-            model_name=model_name,
+            qk_weights=qk_weights,
             var_matrix=var_matrix,
         )
     else:
         self_score_vis(
             wpe=wpe,
-            model_name=model_name,
+            qk_weights=qk_weights,
             heads=heads,
             var_matrix=var_matrix,
         )

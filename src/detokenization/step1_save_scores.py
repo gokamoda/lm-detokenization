@@ -38,7 +38,7 @@ def single_process(suffix_ids: list[int], process_id: int):
             if df.height == 12:
                 continue
 
-        df = data_retriever.search_from_id(suffix_id)
+        df = data_retriever.search_from_id_suffix(suffix_id)
 
         num_heads = df["head"].n_unique()
         num_valid_detokenization = df["count"].sum()
