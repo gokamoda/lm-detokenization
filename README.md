@@ -12,93 +12,51 @@ by Go Kamoda, Benjamin Heinzerling, Tatsuro Inaba, Keito Kudo, Keisuke Sakaguchi
 make install
 ```
 
-## Visualizations
+Run every command below from the repository root. Each command has `--help`.
 
-- $T^{ee}$
-    ```
-    python src/visualize.py \
-        --mode l0_tee \
-        --heads 1 7 \
-        --n-samples 100
-    ```
+## Data
 
-- $T^p$
-    ```
-    python src/visualize.py \
-        --mode l0_tp \
-        --heads 1 7
-    ```
-
-- $T^{pp}$
-    ```
-    python src/visualize.py \
-        --mode l0_tpp \
-        --heads 1 7 \
-        --pos-i 500
-    ```
-
-- $T^p + T^{pp}$
-    ```
-    python src/visualize.py \
-        --mode l0_tp_tpp \
-        --heads 1 7 \
-        --pos-i 500
-    ```
-
-- $T^{e}$
-    ```
-    python src/visualize.py \
-        --mode l0_te \
-        --heads 1 7
-    ```
-
-- Undertrained pos emb
-    ```
-    python src/visualize.py \
-        --mode l0_tpp_undertrained \
-        --heads 0
-    ```
-
-
-## Frequency
+The figures read data under `outputs/`. Make it with
 ```
-python src/frequency.py \
-    openwebtext \
-    --tokenizer gpt2 \
-    --mode bitoken \
-    --num-workers 21 \
+bash scripts/compute_data.sh
+```
+or only some steps, e.g. `bash scripts/compute_data.sh attention six_terms`.
+
+| Step | Command | Output | Time (CPU) |
+|---|---|---|---|
+| `sample` | `uv run sample-openwebtext` | `outputs/data/openwebtext_sample.jsonl` | ~30 min (streams ~24GB) |
+| `frequency` | `uv run count-frequency` | `outputs/freqs/openwebtext/` | ~3 h |
+| `attention` | `uv run attention-rows` | `outputs/attention/gpt2/layer00_i500.pt` | ~20 s |
+| `six_terms` | `uv run six-terms` | `outputs/six_terms/gpt2/contributions.npy` | ~45 min |
+| `auroc` | `uv run detok-auroc` | `outputs/detokenization/gpt2/auroc.parquet` | ~1 h |
+
+The OpenWebText sample is the 10,000 documents with the smallest sha256 of the text; `attention` and `six_terms` use its first documents.
+For a quick test, `count-frequency --source sample --max-documents N`, `six-terms --num-documents N` and `detok-auroc --max-suffixes N` work on part of the data (give them an `--output`/`--output-dir` so the full results are not overwritten).
+
+## Figures
+
+Each figure command takes the document it is for and the printed size:
+`--target naacl2025|thesis` (page and font size), `--width` (fraction of the textwidth; a naacl2025 column is 0.48125) and `--aspect` (height / width).
+```
+uv run position-bias-plot --target thesis --width 1.0 --aspect 0.288 --output outputs/figures/x.pdf
 ```
 
-## OpenWebText sample
-The empirical experiments below use a fixed sample of OpenWebText.
-Make it once before running them:
-```
-bash scripts/make_openwebtext_sample.sh
-```
-This streams the whole dataset once (about 24GB of download, ~30 min) and saves the 10,000 documents with the smallest sha256 of the text to `outputs/data/openwebtext_sample.jsonl`.
-The experiments use the first N documents of this file.
+| Command | Figure |
+|---|---|
+| `tee-plot` | $T^{ee}$ heatmaps (Fig. 2 B) |
+| `roc-plot` | ROC of $T^{ee}$ for a token (Fig. 2 C) |
+| `detok-top-prefixes`, `detok-auroc-table` | Tables of Fig. 2 A and D |
+| `position-bias-plot` | Fig. 3 in one figure (columns A–E) |
+| `tp-plot`, `tpp-plot`, `tp-tpp-plot`, `vs-tptpp-plot` | $T^p$, $T^{pp}$, $T^p + T^{pp}$ before/after softmax, observed attention (parts of Fig. 3, appendix) |
+| `six-terms-plot` | Contribution of the six terms (Fig. 4) |
+| `te-plot` | $T^e$ against token counts |
+| `variance-plot` | Variance of token and position embeddings |
+| `undertrained-plot` | Undertrained position embeddings |
 
-## Emprirical Experiments
-
-- $T^{p} + T^{pp}$
-    ```
-    python src/empirical.py \
-        --mode vs_tptpp \
-        --func main
-    ```
-    ```
-    python src/empirical.py \
-        --mode vs_tptpp \
-        --func vis
-    ```
-- 6 Terms importance
-    ```
-    python src/empirical.py \
-        --mode six \
-        --func main
-    ```
-    ```
-    python src/empirical.py \
-        --mode six \
-        --func vis
-    ```
+The sizes used in each document are recorded in scripts that write all of its figures:
+```
+bash scripts/naacl2025_figures.sh            # -> outputs/figures/naacl2025/
+bash scripts/thesis_figures.sh               # -> outputs/figures/thesis/
+bash scripts/thesis_figures.sh position_bias # only the named figures
+```
+They do not write into the LaTeX projects; copy the figures there after checking them.

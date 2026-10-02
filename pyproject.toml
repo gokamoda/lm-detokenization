@@ -25,6 +25,43 @@ dependencies = [
     "sentencepiece>=0.2.0",
 ]
 
+[project.scripts]
+# data
+sample-openwebtext = "lm_detokenization.cli.data:sample_openwebtext_main"
+count-frequency = "lm_detokenization.cli.data:count_frequency_main"
+attention-rows = "lm_detokenization.cli.data:attention_rows_main"
+six-terms = "lm_detokenization.cli.six_terms:compute_main"
+detok-auroc = "lm_detokenization.cli.detokenization:auroc_main"
+# tables
+detok-auroc-table = "lm_detokenization.cli.detokenization:auroc_table_main"
+detok-top-prefixes = "lm_detokenization.cli.detokenization:top_prefixes_main"
+# figures
+tp-plot = "lm_detokenization.cli.position_terms_plot:tp_main"
+tpp-plot = "lm_detokenization.cli.position_terms_plot:tpp_main"
+tp-tpp-plot = "lm_detokenization.cli.position_terms_plot:tp_tpp_main"
+undertrained-plot = "lm_detokenization.cli.position_terms_plot:undertrained_main"
+vs-tptpp-plot = "lm_detokenization.cli.position_terms_plot:vs_tptpp_main"
+position-bias-plot = "lm_detokenization.cli.position_terms_plot:position_bias_main"
+tee-plot = "lm_detokenization.cli.token_terms_plot:tee_main"
+te-plot = "lm_detokenization.cli.token_terms_plot:te_main"
+variance-plot = "lm_detokenization.cli.token_terms_plot:variance_main"
+six-terms-plot = "lm_detokenization.cli.six_terms:plot_main"
+roc-plot = "lm_detokenization.cli.detokenization:roc_main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/lm_detokenization"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.pytest.ini_options]
+pythonpath = "src"
+testpaths = ["src/lm_detokenization"]
+
 [dependency-groups]
 dev = [
     "ipython>=8.29.0",

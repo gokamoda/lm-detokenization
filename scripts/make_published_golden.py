@@ -7,7 +7,7 @@ Run against a worktree of `published`, with the environment of the time
     PYTHONPATH=<dir>/src uv run python scripts/make_published_golden.py
 
 The output (outputs/golden/published.pt) is compared with the migrated code
-by src/published_golden_test.py.
+by src/lm_detokenization/published_golden_test.py.
 """
 
 from pathlib import Path
