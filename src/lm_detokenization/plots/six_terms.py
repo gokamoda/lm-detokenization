@@ -55,13 +55,15 @@ def plot_six_terms(
             target, width=width, aspect=aspect, nrows=nrows, ncols=ncols, sharex=True
         )
         for ax, head in zip(axes.flat, heads):
+            lowest_mean = np.inf
             for t, name in enumerate(TERMS):
-                plot_band(
-                    ax,
-                    contribution_band(contributions, head, t),
-                    label=rf"$C^{{{TERM_LABELS[name]}}}$",
-                )
+                band = contribution_band(contributions, head, t)
+                plot_band(ax, band, label=rf"$C^{{{TERM_LABELS[name]}}}$")
+                lowest_mean = min(lowest_mean, np.nanmin(band.mean))
             ax.set_yscale("log")
+            # The lower end of a band can reach 0 (large SE); keep the range
+            # to the mean lines instead of following it.
+            ax.set_ylim(bottom=lowest_mean / 10)
             panel_title(
                 ax, r"$C_{i}$" if head == MEAN_OVER_HEADS else rf"$C_{{i,{head}}}$"
             )
