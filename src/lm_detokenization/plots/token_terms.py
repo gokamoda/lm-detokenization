@@ -91,8 +91,8 @@ def plot_te(
             ax.scatter(
                 token_counts[occurs],
                 values[h][occurs],
-                s=0.2,
-                alpha=0.1,
+                s=1.0,
+                alpha=0.3,
                 marker=".",
                 linewidths=0,
                 rasterized=True,
@@ -144,8 +144,8 @@ def plot_variance(
                 ax.scatter(
                     token_counts[occurs],
                     wte_var[occurs],
-                    s=0.2,
-                    alpha=0.3,
+                    s=1.0,
+                    alpha=0.5,
                     marker=".",
                     linewidths=0,
                     rasterized=True,
@@ -164,6 +164,9 @@ def plot_variance(
                 tail = np.arange(num_positions - num_ends, num_positions)
                 top.plot(head, wpe_var[head], marker="o", markersize=1.5)
                 bottom.plot(tail, wpe_var[tail], marker="o", markersize=1.5)
+                # integer positions, both ends included (0, 5, 10 / 1013, 1018, 1023)
+                top.set_xticks(head[::5])
+                bottom.set_xticks(tail[::5])
                 bottom.set_xlabel("Position ($i$)")
                 for ax in (top, bottom):
                     panel_title(ax, r"$\mathrm{Var}(\mathbf{p}_i)$")
