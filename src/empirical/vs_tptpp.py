@@ -5,10 +5,13 @@ import matplotlib.pyplot as plt
 import polars as pl
 import torch
 from datasets import load_dataset
+from feature_extractor import FeatureExtractor
+from feature_extractor.configs import FeatureConfig
+from feature_extractor.data.dataset import TextDataEntry, TextDataset, create_collator
+from feature_extractor.models import load_causal_model, load_tokenizer
+from torch.utils.data import DataLoader
 from torchtyping import TensorType
 from tqdm import tqdm
-from feature_extractor.models import load_causal_model, load_tokenizer
-from transformers import GPT2LMHeadModel
 
 from qk.scores import compute_compare_score, compute_self_score
 from qk.weights import get_position_embedding, get_qk_weights, get_word_embedding
@@ -34,48 +37,27 @@ num_instances = 100
 
 
 def main():
-    model_name = "gpt2"
-    model = GPT2LMHeadModel.from_pretrained(model_name, attn_implementation="eager")
-    # load_tokenizer prepends <|endoftext|> to every prompt for gpt2.
+    extractor = FeatureExtractor("gpt2")
+    extractor.configure(FeatureConfig.from_str(["attn.layer_00.attn_weights"]))
+    # The tokenizer prepends <|endoftext|> to every prompt for gpt2.
     # The published version (Figure 3E of the paper) used no <|endoftext|>.
-    tokenizer = load_tokenizer(model_name)
-    if torch.cuda.is_available():
-        device = "cuda:0"
-    else:
-        device = "cpu"
+    # batch_size=1 so that no padding enters the saved attention.
+    data_loader = DataLoader(
+        TextDataset(
+            [
+                TextDataEntry(idx=str(i), text=row["text"])
+                for i, row in enumerate(get_data(num_instances))
+            ]
+        ),
+        batch_size=1,
+        collate_fn=create_collator(extractor.tokenizer, max_length=1024),
+    )
 
-    model = model.to(device)
-    model.eval()
-
-    for i, row in tqdm(enumerate(get_data(num_instances))):
-        if i == num_instances:
-            break
-
-        save_path = save_dir.joinpath(f"{i}.pt")
-        if save_path.exists():
-            # print(f"Skipping {i}")
-            # continue
-            pass
-
-        prompt = row["text"]
-        input_ids = tokenizer(prompt, return_tensors="pt").to(device)
-
-        if input_ids["input_ids"].shape[1] > 1024:
-            input_ids["input_ids"] = input_ids["input_ids"][:, :1024]
-            input_ids["attention_mask"] = input_ids["attention_mask"][:, :1024]
-
-        with torch.no_grad():
-            output = model.generate(
-                **input_ids,
-                num_return_sequences=1,
-                max_new_tokens=1,
-                return_dict_in_generate=True,
-                output_attentions=True,
-                pad_token_id=tokenizer.eos_token_id,
-            )
-            attn = output.attentions[0][0][0].cpu().detach()
-        attn = attn.to(torch.float16)
-        torch.save(attn, save_path)
+    for batch, features in tqdm(
+        extractor.extract_features(data_loader), total=num_instances
+    ):
+        attn = features.attn[0].attn_weights[0].cpu().to(torch.float16)
+        torch.save(attn, save_dir.joinpath(f"{batch['indices'][0]}.pt"))
 
 
 def vis_empirical(axes, tokenizer, target_length=500, head=0, begin_offsets=0):

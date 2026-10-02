@@ -14,16 +14,16 @@ from dataclasses import dataclass
 
 import torch
 from feature_extractor.models import (
+    get_absolute_pos_embedding_module,
     get_hidden_size_per_head,
     get_model_architecture,
     get_num_attn_heads,
     get_num_kv_heads,
     get_pre_attn_norm_module,
+    get_word_embedding_module,
 )
 from feature_extractor.models.get_modules import get_k_proj_module, get_q_proj_module
-from feature_extractor.reconstruction.attention_dissection import (
-    _precompute_qk_weights,
-)
+from feature_extractor.reconstruction import precompute_qk_weights
 from torch import nn
 from torchtyping import TensorType
 from transformers import PreTrainedModel
@@ -73,7 +73,7 @@ def get_qk_weights(model: PreTrainedModel, layer_index: int = 0) -> QKWeights:
         get_k_proj_module(architecture, layer_index, model=model), ln
     )
 
-    w_qk, bias_terms = _precompute_qk_weights(
+    w_qk, bias_terms = precompute_qk_weights(
         q_proj_module=q_proj,
         k_proj_module=k_proj,
         num_attention_heads=get_num_attn_heads(model.config, architecture),
@@ -84,20 +84,12 @@ def get_qk_weights(model: PreTrainedModel, layer_index: int = 0) -> QKWeights:
 
 
 def get_word_embedding(model: PreTrainedModel) -> TensorType[VOCAB, HIDDEN_DIM]:
-    architecture = get_model_architecture(model)
-    model_module = getattr(model, architecture.model_field)
-    return (
-        getattr(model_module, architecture.word_embedding_field).weight.detach().cpu()
-    )
+    module = get_word_embedding_module(get_model_architecture(model), model=model)
+    return module.weight.detach().cpu()
 
 
 def get_position_embedding(model: PreTrainedModel) -> TensorType[POS, HIDDEN_DIM]:
-    architecture = get_model_architecture(model)
-    if architecture.absolute_pos_embedding_field is None:
-        raise ValueError("The model has no absolute position embedding.")
-    model_module = getattr(model, architecture.model_field)
-    return (
-        getattr(model_module, architecture.absolute_pos_embedding_field)
-        .weight.detach()
-        .cpu()
+    module = get_absolute_pos_embedding_module(
+        get_model_architecture(model), model=model
     )
+    return module.weight.detach().cpu()
