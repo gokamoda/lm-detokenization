@@ -6,8 +6,8 @@ set -euo pipefail
 # (155mm, the width in main.tex); --aspect is height / width.
 #
 # Figure 2 of the paper (detokenization_token_affinity) also has tables, so
-# only its parts are made here (B, C; the tables come from
-# naacl2025_figures.sh naacl2025_tables).
+# only its parts are made here: B, C and the tables of A and D as CSV. The
+# ranks in A are T^ee with LN, which differ from the head 7 rows of the paper.
 #
 # Needs the data made by scripts/compute_data.sh.
 #
@@ -41,6 +41,12 @@ token_affinity_c_roc() {
     --output "$OUT/detokenization_token_affinity_c_roc.pdf"
 }
 
+token_affinity_tables() {
+  uv run detok-top-prefixes --words iens tarian " Jackson" --heads 4 7 --k 5 \
+    --output "$OUT/detokenization_token_affinity_a_top_prefixes.csv"
+  uv run detok-auroc-table --output "$OUT/detokenization_token_affinity_d_auroc.csv"
+}
+
 # fig:detokenization-position-bias: textwidth, columns A-E in one figure.
 position_bias() {
   uv run position-bias-plot $T --heads 1 7 --width 1.0 --aspect 0.288 \
@@ -51,6 +57,7 @@ ALL_FIGURES=(
   six_term_contribution
   token_affinity_b_tee
   token_affinity_c_roc
+  token_affinity_tables
   position_bias
 )
 
