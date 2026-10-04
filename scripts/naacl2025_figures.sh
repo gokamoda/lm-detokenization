@@ -85,7 +85,7 @@ undertrained_head_0() {
 
 # Appendix, \onecolumn.
 l0tp_head_all() {
-  uv run tp-plot $T --heads -1 --ncols 4 --width 1.0 --aspect 0.743 \
+  uv run tp-plot $T --heads -1 --ncols 2 --width 1.0 --aspect 0.743 \
     --output "$OUT/l0tp_head-all.pdf"
 }
 
@@ -112,7 +112,7 @@ l0tee_head_all() {
 }
 
 six_terms_all() {
-  uv run six-terms-plot $T --heads 0 1 2 3 4 5 6 7 8 9 10 11 --ncols 4 \
+  uv run six-terms-plot $T --heads 0 1 2 3 4 5 6 7 8 9 10 11 --ncols 3 \
     --width 1.0 --aspect 0.639 \
     --output "$OUT/6term-importance-all.pdf"
 }

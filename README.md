@@ -60,3 +60,7 @@ bash scripts/thesis_figures.sh               # -> outputs/figures/thesis/
 bash scripts/thesis_figures.sh position_bias # only the named figures
 ```
 They do not write into the LaTeX projects; copy the figures there after checking them.
+
+## Notebooks
+
+- `notebooks/prefix_search.ipynb`: for a current token (suffix), $T^{ee}$ and the OpenWebText bigram count of every past token (prefix), and the ROC of a head. Needs `outputs/freqs/openwebtext/`.
