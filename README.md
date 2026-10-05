@@ -35,17 +35,19 @@ bash scripts/compute_data.sh
 ```
 or only some steps, e.g. `bash scripts/compute_data.sh attention six_terms`.
 
-| Step | Command | Output | Time (CPU) |
+| Step | Command | Output | Time |
 |---|---|---|---|
 | `sample` | `corpus-tools sample` | `outputs/corpus-tools/.../samples/hash_n10000.jsonl` | ~30 min (streams ~24GB) |
 | `frequency` | `corpus-tools count` | `outputs/corpus-tools/.../all/gpt2/counts/nobos/` | ~2 h; ~30 min with `CPUS=16` |
 | `attention` | `uv run attention-rows` | `outputs/attention/gpt2/layer00_i500.pt` | ~20 s |
-| `six_terms` | `uv run six-terms` | `outputs/six_terms/gpt2/contributions.npy` | ~45 min |
-| `auroc` | `uv run detok-auroc` | `outputs/detokenization/gpt2/auroc.parquet` | ~1 h |
+| `six_terms` | `uv run six-terms` | `outputs/six_terms/gpt2/contributions.npy` | ~45 min on CPU; ~1 min with `DEVICE=cuda` |
+| `auroc` | `uv run detok-auroc` | `outputs/detokenization/gpt2/auroc.parquet` | ~2 h 20 min on a server CPU; ~35 s with `DEVICE=cuda` |
 
 `sample` and `frequency` run the [corpus-tools](https://github.com/gokamoda/corpus-tools) command, streaming OpenWebText at a fixed commit, and save under `outputs/corpus-tools/Skylion007--openwebtext/plain_text/train/`. The frequency is of all of OpenWebText, apart from the sample. `CPUS=16 bash scripts/compute_data.sh frequency` counts with 16 threads in all (corpus-tools `--cpus`).
 
 The OpenWebText sample is the 10,000 documents with the smallest sha256 of the text; `attention` and `six_terms` use its first documents.
+`DEVICE=cuda bash scripts/compute_data.sh six_terms auroc` computes these two on a GPU (`--device`; about 0.7 and 2.0 GiB of GPU memory for GPT-2), with the same results up to rounding; without it, `auroc` uses scikit-learn on the CPU, as published.
+
 For a quick test, `six-terms --num-documents N` and `detok-auroc --max-suffixes N` work on part of the data (give them an `--output`/`--output-dir` so the full results are not overwritten).
 
 ## Figures

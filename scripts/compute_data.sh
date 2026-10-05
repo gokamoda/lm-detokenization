@@ -10,8 +10,11 @@ set -euo pipefail
 #   frequency     all/gpt2/counts/nobos/                 1-grams.npy, 2-grams.npz on all of OpenWebText
 #                                                        (~2 h; ~30 min with CPUS=16)
 #   attention     outputs/attention/gpt2/layer00_i500.pt observed attention from position 500 (~20 s)
-#   six_terms     outputs/six_terms/gpt2/contributions.npy  5,000 documents (~1.5 h on CPU)
-#   auroc         outputs/detokenization/gpt2/auroc.parquet every suffix token (~1 h; needs frequency)
+#   six_terms     outputs/six_terms/gpt2/contributions.npy  5,000 documents (~1.5 h on CPU;
+#                                                        ~1 min and 0.7 GiB with DEVICE=cuda)
+#   auroc         outputs/detokenization/gpt2/auroc.parquet every suffix token, needs frequency
+#                                                        (~2 h 20 min on a server CPU;
+#                                                        ~35 s and 2.0 GiB with DEVICE=cuda)
 #
 # Usage (from the repository root):
 #   bash scripts/compute_data.sh                  # all steps, in the order above
