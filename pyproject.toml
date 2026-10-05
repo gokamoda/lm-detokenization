@@ -75,18 +75,22 @@ conflicts = [
   [
     { extra = "cpu" },
     { extra = "gpu" },
+    { extra = "gpu-cu118" },
   ],
 ]
 
 [project.optional-dependencies]
 cpu = ["torch==2.7.0"]
 gpu = ["torch==2.7.0"]
+# for a server whose NVIDIA driver is too old for CUDA 12 (make install-cu118)
+gpu-cu118 = ["torch==2.7.0"]
 
 [tool.uv.sources]
 torch = [
   { index = "pytorch-cpu-mac", extra = "cpu", marker = "platform_system == 'macOS'" },
   { index = "pytorch-cpu", extra = "cpu", marker = "platform_system != 'macOS'" },
   { index = "pytorch-gpu", extra = "gpu" },
+  { index = "pytorch-gpu-cu118", extra = "gpu-cu118" },
 ]
 
 feature-extractor = { git = "https://github.com/gokamoda/transformer-feature-extractor.git", rev = "325eb06" }
@@ -106,6 +110,11 @@ explicit = true
 [[tool.uv.index]]
 name = "pytorch-gpu"
 url = "https://download.pytorch.org/whl/cu126"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-gpu-cu118"
+url = "https://download.pytorch.org/whl/cu118"
 explicit = true
 
 
