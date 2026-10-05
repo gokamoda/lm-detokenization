@@ -12,6 +12,12 @@ by Go Kamoda, Benjamin Heinzerling, Tatsuro Inaba, Keito Kudo, Keisuke Sakaguchi
 make install
 ```
 
+This installs PyTorch 2.7.0 for CUDA 12.6 if `nvidia-smi` finds a GPU, and for CPU otherwise. On a server whose NVIDIA driver is too old for CUDA 12 (e.g. a driver of CUDA 11.4, where PyTorch warns "The NVIDIA driver on your system is too old"), install the CUDA 11.8 build instead:
+
+```
+make install-cu118
+```
+
 Run every command below from the repository root. Each command has `--help`.
 
 ## Data
