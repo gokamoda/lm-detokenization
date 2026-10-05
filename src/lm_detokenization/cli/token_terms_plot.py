@@ -12,7 +12,7 @@ from lm_detokenization.cli.args import (
     resolve_counts_dir,
     resolve_heads,
 )
-from lm_detokenization.data.openwebtext import load_token_counts
+from lm_detokenization.data.corpus import load_token_counts
 from lm_detokenization.plots import token_terms as plots
 from lm_detokenization.plots.save import save_figure
 from lm_detokenization.weights import load_layer0_weights

@@ -139,7 +139,7 @@ def _attention_arg(parser) -> None:
         type=Path,
         default=None,
         help="Attention rows made by attention-rows "
-        "(default: outputs/attention/gpt2/layer00_i<pos-i>.pt).",
+        "(default: outputs/attention/<model>/layer00_i<pos-i>.pt).",
     )
 
 
@@ -160,7 +160,9 @@ def vs_tptpp_main() -> None:
     parser.add_argument("--legend", action="store_true")
     args = parser.parse_args()
     weights, stats = _load(args)
-    rows = AttentionRows.load(args.attention or attention_rows_path(args.pos_i))
+    rows = AttentionRows.load(
+        args.attention or attention_rows_path(args.model_name, args.pos_i)
+    )
     fig = plots.plot_vs_tptpp(
         weights,
         stats,
@@ -196,7 +198,9 @@ def position_bias_main() -> None:
     rows = (
         None
         if args.no_observed
-        else AttentionRows.load(args.attention or attention_rows_path(args.pos_i))
+        else AttentionRows.load(
+            args.attention or attention_rows_path(args.model_name, args.pos_i)
+        )
     )
     fig = plots.plot_position_bias(
         weights,

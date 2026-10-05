@@ -6,7 +6,7 @@ from corpus_tools import hash_sample, save_hash_sample
 from corpus_tools.count import save_counts
 from scipy import sparse
 
-from lm_detokenization.data.openwebtext import (
+from lm_detokenization.data.corpus import (
     counts_dir,
     get_data,
     load_bigram_counts,
@@ -15,14 +15,16 @@ from lm_detokenization.data.openwebtext import (
 )
 
 OPENWEBTEXT_DIR = Path("outputs/corpus-tools/Skylion007--openwebtext/plain_text/train")
+WIKIPEDIA_JA_DIR = Path("outputs/corpus-tools/wikimedia--wikipedia/20231101.ja/train")
 
 
 def test_paths_are_those_of_corpus_tools():
     assert sample_path() == OPENWEBTEXT_DIR / "samples/hash_n10000.jsonl"
     assert counts_dir("gpt2") == OPENWEBTEXT_DIR / "all/gpt2/counts/nobos"
+    assert sample_path("wikipedia-ja") == WIKIPEDIA_JA_DIR / "samples/hash_n10000.jsonl"
     assert (
-        counts_dir("rinna/japanese-gpt-1b")
-        == OPENWEBTEXT_DIR / "all/rinna--japanese-gpt-1b/counts/nobos"
+        counts_dir("rinna/japanese-gpt2-small", "wikipedia-ja")
+        == WIKIPEDIA_JA_DIR / "all/rinna--japanese-gpt2-small/counts/nobos"
     )
 
 
@@ -42,13 +44,13 @@ def test_load_counts(tmp_path):
 
 
 def test_missing_counts(tmp_path):
-    with pytest.raises(FileNotFoundError, match="compute_data.sh frequency"):
+    with pytest.raises(FileNotFoundError, match="frequency step"):
         load_bigram_counts(tmp_path)
 
 
 def test_get_data_reads_the_sample(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    with pytest.raises(FileNotFoundError, match="compute_data.sh sample"):
+    with pytest.raises(FileNotFoundError, match="sample step"):
         get_data()
     rows = [{"text": f"document {i}"} for i in range(100)]
     save_hash_sample(rows, sample_path(), num_samples=20)

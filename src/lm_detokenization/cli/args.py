@@ -6,40 +6,63 @@ Paths are relative to the repository root, where the commands are run.
 import argparse
 from pathlib import Path
 
-from lm_detokenization.data.openwebtext import counts_dir
+from lm_detokenization.data.corpus import CORPORA, DEFAULT_CORPUS, counts_dir
 from lm_detokenization.plots.targets import TARGETS, FigureTarget
 
 DEFAULT_MODEL = "gpt2"
 OUTPUTS = Path("outputs")
-SIX_TERMS_PATH = OUTPUTS / "six_terms" / "gpt2" / "contributions.npy"
-ATTENTION_DIR = OUTPUTS / "attention" / "gpt2"
-AUROC_PATH = OUTPUTS / "detokenization" / "gpt2" / "auroc.parquet"
 
 
-def attention_rows_path(position: int) -> Path:
-    return ATTENTION_DIR / f"layer00_i{position}.pt"
+def model_dir(model_name: str) -> str:
+    """Directory name of a model's outputs, e.g. gpt2, rinna--japanese-gpt2-small."""
+    return model_name.replace("/", "--")
+
+
+def six_terms_path(model_name: str) -> Path:
+    return OUTPUTS / "six_terms" / model_dir(model_name) / "contributions.npy"
+
+
+def attention_rows_path(model_name: str, position: int) -> Path:
+    return OUTPUTS / "attention" / model_dir(model_name) / f"layer00_i{position}.pt"
+
+
+def auroc_path(model_name: str) -> Path:
+    return OUTPUTS / "detokenization" / model_dir(model_name) / "auroc.parquet"
 
 
 def add_model_arg(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--model-name",
         default=DEFAULT_MODEL,
-        help="Hugging Face model name (only GPT-2 is supported).",
+        help="Hugging Face model name: GPT-2 or a model of the same architecture "
+        "(e.g. rinna/japanese-gpt2-small). Outputs are under its name.",
+    )
+
+
+def add_corpus_arg(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--corpus",
+        choices=sorted(CORPORA),
+        default=DEFAULT_CORPUS,
+        help="Corpus of the documents and of the counts (default: %(default)s).",
     )
 
 
 def add_counts_dir_arg(parser: argparse.ArgumentParser) -> None:
+    """--corpus and --counts-dir: the token and bigram counts to read."""
+    add_corpus_arg(parser)
     parser.add_argument(
         "--counts-dir",
         type=Path,
         default=None,
-        help="Token and bigram counts made by `bash scripts/compute_data.sh "
-        "frequency` (default: their directory under outputs/corpus-tools).",
+        help="Token and bigram counts made by the frequency step of "
+        "scripts/compute_data*.sh (default: those of --model-name and --corpus "
+        "under outputs/corpus-tools).",
     )
 
 
 def resolve_counts_dir(args: argparse.Namespace) -> Path:
-    return args.counts_dir or counts_dir(args.model_name)
+    return args.counts_dir or counts_dir(args.model_name, args.corpus)
 
 
 def add_figure_args(

@@ -30,7 +30,7 @@ set -euo pipefail
 # to the one made before the switch to corpus-tools.
 OPENWEBTEXT_REVISION=79d93d786212f7344586290adb811d4ae6a1762c
 # The output directory must match CORPUS_TOOLS_OUTPUT in
-# src/lm_detokenization/data/openwebtext.py, which reads them.
+# src/lm_detokenization/data/corpus.py, which reads them.
 CORPUS_TOOLS_ARGS=(--corpus openwebtext --revision "$OPENWEBTEXT_REVISION" --output-dir outputs/corpus-tools)
 
 sample() {

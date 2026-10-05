@@ -14,14 +14,14 @@ from lm_detokenization.analysis.detokenization import (
     top_prefixes,
 )
 from lm_detokenization.cli.args import (
-    AUROC_PATH,
     add_counts_dir_arg,
     add_figure_args,
     add_model_arg,
+    auroc_path,
     figure_target,
     resolve_counts_dir,
 )
-from lm_detokenization.data.openwebtext import load_bigram_counts
+from lm_detokenization.data.corpus import load_bigram_counts
 from lm_detokenization.plots.detokenization import plot_roc
 from lm_detokenization.plots.save import save_figure
 from lm_detokenization.tokens import token_text
@@ -51,7 +51,12 @@ def auroc_main() -> None:
         help="Only the first suffix ids (for a quick test).",
     )
     parser.add_argument("--batch-size", type=int, default=64)
-    parser.add_argument("--output", type=Path, default=AUROC_PATH)
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Default: outputs/detokenization/<model>/auroc.parquet.",
+    )
     parser.add_argument(
         "--device",
         default=None,
@@ -76,9 +81,10 @@ def auroc_main() -> None:
     auroc = compute_auroc(
         affinity, bigrams, suffix_ids, batch_size=args.batch_size, device=args.device
     )
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    auroc.write_parquet(args.output)
-    print(f"saved {args.output}")
+    output = args.output or auroc_path(args.model_name)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    auroc.write_parquet(output)
+    print(f"saved {output}")
     if args.device is not None and args.device.startswith("cuda"):
         peak = torch.cuda.max_memory_allocated(args.device) / 2**30
         print(f"peak GPU memory: {peak:.2f} GiB")
@@ -88,10 +94,18 @@ def auroc_main() -> None:
 
 def auroc_table_main() -> None:
     parser = argparse.ArgumentParser(description="Mean AUROC per head (Figure 2 D).")
-    parser.add_argument("--auroc", type=Path, default=AUROC_PATH)
+    add_model_arg(parser)
+    parser.add_argument(
+        "--auroc",
+        type=Path,
+        default=None,
+        help="Default: outputs/detokenization/<model>/auroc.parquet.",
+    )
     parser.add_argument("--output", type=Path, default=None, help="Also write a CSV.")
     args = parser.parse_args()
-    table = mean_auroc_by_head(pl.read_parquet(args.auroc))
+    table = mean_auroc_by_head(
+        pl.read_parquet(args.auroc or auroc_path(args.model_name))
+    )
     with pl.Config(tbl_rows=100):
         print(table)
     if args.output:
