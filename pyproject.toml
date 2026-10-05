@@ -93,7 +93,7 @@ torch = [
   { index = "pytorch-gpu-cu118", extra = "gpu-cu118" },
 ]
 
-feature-extractor = { git = "https://github.com/gokamoda/transformer-feature-extractor.git", rev = "325eb06" }
+feature-extractor = { git = "https://github.com/gokamoda/transformer-feature-extractor.git", rev = "d076033" }
 corpus-tools = { git = "https://github.com/gokamoda/corpus-tools.git", rev = "0f8b597" }
 hfdecoderutils = { git = "https://github.com/gokamoda/lm_generation_cheatsheet.git", rev = "23796e8" }
 
