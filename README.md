@@ -39,7 +39,7 @@ or only some steps, e.g. `bash scripts/compute_data.sh attention six_terms`.
 |---|---|---|---|
 | `sample` | `corpus-tools sample` | `outputs/corpus-tools/.../samples/hash_n10000.jsonl` | ~30 min (streams ~24GB) |
 | `frequency` | `corpus-tools count` | `outputs/corpus-tools/.../all/gpt2/counts/nobos/` | ~2 h; ~30 min with `CPUS=16` |
-| `attention` | `uv run attention-rows` | `outputs/attention/gpt2/layer00_i500.pt` | ~2 min on CPU |
+| `attention` | `uv run attention-rows` | `outputs/attention/gpt2/layer00_i500.pt` | ~2 min (on an Apple M4 CPU, and as long on a server GPU) |
 | `six_terms` | `uv run six-terms` | `outputs/six_terms/gpt2/contributions.npy` | ~45 min on CPU; ~1 min with `DEVICE=cuda` |
 | `auroc` | `uv run detok-auroc` | `outputs/detokenization/gpt2/auroc.parquet` | ~2 h 20 min on a server CPU; ~35 s with `DEVICE=cuda` |
 
