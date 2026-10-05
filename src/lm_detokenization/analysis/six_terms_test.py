@@ -1,6 +1,15 @@
+from types import SimpleNamespace
+
+import numpy as np
+import pytest
 import torch
 
-from lm_detokenization.analysis.six_terms import TERMS, contributions
+from lm_detokenization.analysis.six_terms import (
+    MAX_LENGTH,
+    TERMS,
+    compute_contributions,
+    contributions,
+)
 
 
 def published_loop(scores):
@@ -53,3 +62,47 @@ def test_contributions_match_published_loop():
     torch.testing.assert_close(
         contributions(scores), published_loop(scores), rtol=1e-4, atol=1e-6
     )
+
+
+class ToyTokenizer:
+    """Token id = character code mod 50, as tensors like a HF tokenizer."""
+
+    def __call__(self, text, return_tensors=None):
+        assert return_tensors == "pt"
+
+        class Encoding:
+            input_ids = torch.tensor([[ord(c) % 50 for c in text]])
+
+        return Encoding()
+
+
+def accelerator() -> str | None:
+    if torch.cuda.is_available():
+        return "cuda"
+    if torch.backends.mps.is_available():
+        return "mps"
+    return None
+
+
+@pytest.mark.skipif(accelerator() is None, reason="no GPU")
+def test_contributions_on_a_gpu_match_the_cpu(tmp_path):
+    g = torch.Generator().manual_seed(0)
+    heads, dim = 3, 8
+    weights = SimpleNamespace(
+        wte=torch.randn(50, dim, generator=g),
+        wpe=torch.randn(MAX_LENGTH, dim, generator=g),
+        qk=SimpleNamespace(
+            w_qk=torch.randn(heads, dim, dim, generator=g),
+            b_qk=torch.randn(heads, dim, generator=g),
+        ),
+        num_heads=heads,
+    )
+    texts = ["the first document", "a second, longer document " * 3]
+    for device in ["cpu", accelerator()]:
+        compute_contributions(
+            weights, ToyTokenizer(), texts, tmp_path / f"{device}.npy", device=device
+        )
+    cpu = np.load(tmp_path / "cpu.npy")
+    gpu = np.load(tmp_path / f"{accelerator()}.npy")
+    np.testing.assert_array_equal(np.isnan(cpu), np.isnan(gpu))
+    np.testing.assert_allclose(gpu, cpu, rtol=1e-4, atol=1e-5)

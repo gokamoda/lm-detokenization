@@ -4,6 +4,7 @@ import argparse
 from pathlib import Path
 
 import numpy as np
+import torch
 from feature_extractor.models import load_tokenizer
 
 from lm_detokenization.analysis.six_terms import compute_contributions
@@ -27,6 +28,12 @@ def compute_main() -> None:
     add_model_arg(parser)
     parser.add_argument("--num-documents", type=int, default=5000)
     parser.add_argument("--output", type=Path, default=SIX_TERMS_PATH)
+    parser.add_argument(
+        "--device",
+        default="cpu",
+        help="Where to compute: cpu, cuda (or cuda:N), mps. About 1 GB of GPU "
+        "memory for GPT-2 (the peak is printed for cuda).",
+    )
     args = parser.parse_args()
     texts = [row["text"] for row in get_data(args.num_documents)]
     compute_contributions(
@@ -34,8 +41,12 @@ def compute_main() -> None:
         load_tokenizer(args.model_name),
         texts,
         args.output,
+        device=args.device,
     )
     print(f"saved {args.output}")
+    if args.device.startswith("cuda"):
+        peak = torch.cuda.max_memory_allocated(args.device) / 2**30
+        print(f"peak GPU memory: {peak:.2f} GiB")
 
 
 def plot_main() -> None:

@@ -49,16 +49,12 @@ def compute_6terms(
     w_compare: TensorType[HEAD, HIDDEN_DIM, HIDDEN_DIM],
     w_self: TensorType[HEAD, HIDDEN_DIM],
 ) -> dict[str, torch.Tensor]:
-    tokens = tokenizer(prompt, return_tensors="pt")
+    input_ids = tokenizer(prompt, return_tensors="pt").input_ids[:, :MAX_LENGTH]
 
-    if tokens.input_ids.shape[1] > MAX_LENGTH:
-        tokens.input_ids = tokens.input_ids[:, :MAX_LENGTH]
-        tokens.attention_mask = tokens.attention_mask[:, :MAX_LENGTH]
-
-    tok_emb: TensorType[1, SEQUENCE, HIDDEN_DIM] = wte[tokens.input_ids]
-    pos_enc: TensorType[1, SEQUENCE, HIDDEN_DIM] = wpe[
-        : tokens.input_ids.shape[1]
-    ].unsqueeze(0)
+    tok_emb: TensorType[1, SEQUENCE, HIDDEN_DIM] = wte[input_ids.to(wte.device)]
+    pos_enc: TensorType[1, SEQUENCE, HIDDEN_DIM] = wpe[: input_ids.shape[1]].unsqueeze(
+        0
+    )
 
     variances: TensorType[SEQUENCE] = (tok_emb + pos_enc).var(
         dim=-1, keepdim=True, unbiased=False
@@ -96,14 +92,17 @@ def contributions(
 ) -> TensorType[HEAD, SEQUENCE, TERM]:
     """KL contribution of each term in TERMS, for every head and query position."""
     length = scores["posj"].shape[-1]
+    device = scores["posj"].device
     matrices = {name: _as_matrix(scores[name], length).float() for name in TERMS}
     total = sum(matrices.values())
-    future = torch.triu(torch.ones(length, length, dtype=torch.bool), diagonal=1)
-    neg_inf = torch.tensor(float("-inf"))
+    future = torch.triu(
+        torch.ones(length, length, dtype=torch.bool, device=device), diagonal=1
+    )
+    neg_inf = torch.tensor(float("-inf"), device=device)
 
     log_p = torch.log_softmax(torch.where(future, neg_inf, total), dim=-1)
     p = log_p.exp()
-    row_length = torch.arange(1, length + 1, dtype=torch.float32)
+    row_length = torch.arange(1, length + 1, dtype=torch.float32, device=device)
     out = []
     for name in TERMS:
         log_q = torch.log_softmax(
@@ -111,7 +110,9 @@ def contributions(
         )
         # kl_div(input=log q, target=p) = sum_j p_j (log p_j - log q_j), with
         # p_j = 0 contributing 0; reduction="mean" divides by i + 1
-        pointwise = torch.where(p > 0, p * (log_p - log_q), torch.zeros(()))
+        pointwise = torch.where(
+            p > 0, p * (log_p - log_q), torch.zeros((), device=device)
+        )
         out.append(pointwise.sum(dim=-1) / row_length)
     return torch.stack(out, dim=-1)
 
@@ -121,10 +122,21 @@ def compute_contributions(
     tokenizer: PreTrainedTokenizerBase,
     texts: list[str],
     output_path: Path,
+    device: str = "cpu",
 ) -> None:
     """Save the contributions of `texts` as a float32 array
     [document, head, query position, term], NaN beyond each document's length.
+
+    On `device` ("cpu", "cuda", "mps", ...), one document at a time. For GPT-2
+    (12 heads, 768 dims) this takes about 1 GB of GPU memory (1.0 GiB measured
+    on MPS for documents of 1024 tokens): 0.2 GB of weights (wte, wpe, W^QK),
+    and [head, 1024, 1024] float32 matrices of 50 MB each while computing (the
+    six terms, their sum, log p, p, and those of the term left out).
     """
+    wte = weights.wte.to(device)
+    wpe = weights.wpe.to(device)
+    w_compare = weights.qk.w_qk.to(device)
+    w_self = weights.qk.b_qk.to(device)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     out = np.lib.format.open_memmap(
         output_path,
@@ -138,11 +150,11 @@ def compute_contributions(
             scores = compute_6terms(
                 prompt=text,
                 tokenizer=tokenizer,
-                wte=weights.wte,
-                wpe=weights.wpe,
-                w_compare=weights.qk.w_qk,
-                w_self=weights.qk.b_qk,
+                wte=wte,
+                wpe=wpe,
+                w_compare=w_compare,
+                w_self=w_self,
             )
-            c = contributions(scores).numpy()
+            c = contributions(scores).cpu().numpy()
             out[k, :, : c.shape[1]] = c
     out.flush()

@@ -18,6 +18,7 @@ set -euo pipefail
 #   bash scripts/compute_data.sh attention auroc  # only the named steps
 #   CPUS=16 bash scripts/compute_data.sh frequency  # count with 16 threads in all
 #                                                   # (corpus-tools --cpus)
+#   DEVICE=cuda bash scripts/compute_data.sh six_terms  # compute on a GPU
 
 # OpenWebText is read at this commit of its Hub repository, so that the sample
 # and the counts can be made again. The sample made from it is byte-identical
@@ -42,7 +43,7 @@ attention() {
 }
 
 six_terms() {
-  uv run six-terms --num-documents 5000
+  uv run six-terms --num-documents 5000 ${DEVICE:+--device "$DEVICE"}
 }
 
 auroc() {
