@@ -50,14 +50,65 @@ def suffix_auroc(scores: np.ndarray, prefix_counts: np.ndarray) -> float:
     return float(roc_auc_score(positive, scores, sample_weight=weight))
 
 
+def batch_auroc(
+    scores: TensorType[BATCH, VOCAB], counts: TensorType[BATCH, VOCAB]
+) -> np.ndarray:
+    """suffix_auroc of each row at once, on the device of the tensors.
+
+    AUROC = sum over positives p and negatives n of w_p w_n [s_p > s_n]
+    (ties count 1/2), divided by (sum w_p)(sum w_n). The scores are sorted,
+    tied scores are grouped, and the weights are summed in int64 (counts for
+    positives, 1 for negatives), doubled so that the halves of ties are
+    integers too: the sums are exact. Returns float64 AUROCs (0 for a row
+    without positives).
+    """
+    order = scores.argsort(dim=-1)
+    sorted_scores = scores.gather(-1, order)
+    positive = counts.to(torch.int64).gather(-1, order)
+    del order
+    negative = (positive == 0).to(torch.int64)
+    starts = torch.ones_like(sorted_scores, dtype=torch.bool)
+    starts[:, 1:] = sorted_scores[:, 1:] != sorted_scores[:, :-1]
+    del sorted_scores
+    group = starts.cumsum(dim=-1) - 1  # tie group of each sorted score
+    del starts
+    group_positive = torch.zeros_like(positive).scatter_add_(-1, group, positive)
+    group_negative = torch.zeros_like(negative).scatter_add_(-1, group, negative)
+    del group
+    total_positive = positive.sum(dim=-1)
+    total_negative = negative.sum(dim=-1)
+    del positive, negative
+    below = group_negative.cumsum(dim=-1) - group_negative  # negatives scored lower
+    twice = (group_positive * (2 * below + group_negative)).sum(dim=-1)
+    # in float64 on the CPU (MPS has no float64)
+    twice, total_positive, total_negative = (
+        x.cpu().numpy().astype(np.float64)
+        for x in (twice, total_positive, total_negative)
+    )
+    with np.errstate(invalid="ignore", divide="ignore"):
+        auroc = twice / (2 * total_positive * total_negative)
+    return np.where(total_positive > 0, auroc, 0.0)
+
+
 def compute_auroc(
     affinity: TokenAffinity,
     bigram_counts: sparse.csc_matrix,
     suffix_ids: list[int],
     batch_size: int = 64,
+    device: str | None = None,
 ) -> pl.DataFrame:
     """AUROC of every head for every suffix: columns suffix_id, head, auroc,
-    num_valid_detokenization (total count of bigrams ending in the suffix)."""
+    num_valid_detokenization (total count of bigrams ending in the suffix).
+
+    Without `device`, with scikit-learn on the CPU (as published). With a
+    device ("cuda", "mps", "cpu"), with batch_auroc there: the same values up
+    to rounding, much faster on a GPU. For GPT-2, a batch of 64 suffixes takes
+    a few GB there (4.4 GiB held on MPS); memory grows with batch_size.
+    """
+    if device is not None:
+        return _compute_auroc_on(
+            affinity, bigram_counts, suffix_ids, batch_size, device
+        )
     rows = []
     for start in tqdm(range(0, len(suffix_ids), batch_size), desc="AUROC"):
         batch = suffix_ids[start : start + batch_size]
@@ -74,6 +125,46 @@ def compute_auroc(
                     }
                 )
     return pl.DataFrame(rows)
+
+
+def _compute_auroc_on(
+    affinity: TokenAffinity,
+    bigram_counts: sparse.csc_matrix,
+    suffix_ids: list[int],
+    batch_size: int,
+    device: str,
+) -> pl.DataFrame:
+    on_device = TokenAffinity(
+        wte=affinity.wte.to(device), w_qk=affinity.w_qk.to(device)
+    )
+    num_heads = affinity.w_qk.shape[0]
+    columns: dict[str, list[np.ndarray]] = {
+        "suffix_id": [],
+        "head": [],
+        "auroc": [],
+        "num_valid_detokenization": [],
+    }
+    for start in tqdm(range(0, len(suffix_ids), batch_size), desc=f"AUROC on {device}"):
+        batch = suffix_ids[start : start + batch_size]
+        scores = on_device.suffix_scores(batch)  # [B, H, V]
+        counts = np.asarray(bigram_counts[:, batch].T.toarray(), dtype=np.int64)
+        auroc = batch_auroc(
+            scores.reshape(len(batch) * num_heads, -1),
+            torch.from_numpy(counts).to(device).repeat_interleave(num_heads, dim=0),
+        )
+        columns["suffix_id"].append(np.repeat(batch, num_heads))
+        columns["head"].append(np.tile(np.arange(num_heads), len(batch)))
+        columns["auroc"].append(auroc)
+        columns["num_valid_detokenization"].append(
+            np.repeat(counts.sum(axis=1), num_heads)
+        )
+    return pl.DataFrame(
+        {name: np.concatenate(parts) for name, parts in columns.items()}
+    ).with_columns(
+        pl.col("suffix_id").cast(pl.Int64),
+        pl.col("head").cast(pl.Int64),
+        pl.col("num_valid_detokenization").cast(pl.Int64),
+    )
 
 
 def mean_auroc_by_head(auroc: pl.DataFrame) -> pl.DataFrame:

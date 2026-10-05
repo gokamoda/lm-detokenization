@@ -4,6 +4,7 @@ import argparse
 from pathlib import Path
 
 import polars as pl
+import torch
 from feature_extractor.models import load_tokenizer
 
 from lm_detokenization.analysis.detokenization import (
@@ -55,6 +56,14 @@ def auroc_main() -> None:
     )
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--output", type=Path, default=AUROC_PATH)
+    parser.add_argument(
+        "--device",
+        default=None,
+        help="Compute with PyTorch on this device (cuda, cuda:N, mps, cpu): the same "
+        "AUROC up to rounding. A few GB of GPU memory for a batch of 64 suffixes "
+        "(the peak is printed for cuda). Default: scikit-learn on the CPU, as "
+        "published.",
+    )
     args = parser.parse_args()
     affinity = _affinity(args.model_name)
     bigrams = load_bigram_counts(resolve_counts_dir(args)).tocsc()
@@ -66,10 +75,17 @@ def auroc_main() -> None:
             else min(args.max_suffixes, vocab_size)
         )
     )
-    auroc = compute_auroc(affinity, bigrams, suffix_ids, batch_size=args.batch_size)
+    # the model is loaded on the CPU only to read its weights
+    print(f"computing the AUROC on {args.device or 'cpu (scikit-learn)'}")
+    auroc = compute_auroc(
+        affinity, bigrams, suffix_ids, batch_size=args.batch_size, device=args.device
+    )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     auroc.write_parquet(args.output)
     print(f"saved {args.output}")
+    if args.device is not None and args.device.startswith("cuda"):
+        peak = torch.cuda.max_memory_allocated(args.device) / 2**30
+        print(f"peak GPU memory: {peak:.2f} GiB")
     with pl.Config(tbl_rows=100):
         print(mean_auroc_by_head(auroc))
 

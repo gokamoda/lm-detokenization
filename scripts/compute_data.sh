@@ -18,7 +18,7 @@ set -euo pipefail
 #   bash scripts/compute_data.sh attention auroc  # only the named steps
 #   CPUS=16 bash scripts/compute_data.sh frequency  # count with 16 threads in all
 #                                                   # (corpus-tools --cpus)
-#   DEVICE=cuda bash scripts/compute_data.sh six_terms  # compute on a GPU
+#   DEVICE=cuda bash scripts/compute_data.sh six_terms auroc  # compute on a GPU
 
 # OpenWebText is read at this commit of its Hub repository, so that the sample
 # and the counts can be made again. The sample made from it is byte-identical
@@ -47,7 +47,7 @@ six_terms() {
 }
 
 auroc() {
-  uv run detok-auroc
+  uv run detok-auroc ${DEVICE:+--device "$DEVICE"}
 }
 
 ALL_STEPS=(sample frequency attention six_terms auroc)
