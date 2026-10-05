@@ -240,6 +240,10 @@ def _empirical_band(rows: AttentionRows, head: int) -> pt.Band:
     return pt.Band(mean=w.mean(axis=0), low=low, high=high)
 
 
+OBSERVED_COLOR = "red"
+PREDICTION_COLOR = "C0"
+
+
 def _alpha(i, h) -> str:
     return rf"$\alpha_{{{i},j,{h}}}$"
 
@@ -249,11 +253,13 @@ def _plot_empirical(ax, weights, stats, rows: AttentionRows, h, begin: int) -> N
     prediction from T^pp + T^p (dots), for j = begin .. i."""
     i = rows.position
     x = np.arange(i + 1)
-    plot_band(ax, _empirical_band(rows, h), x=x, label="observed")
+    # Colors as in Figure 3 E of the paper: observed in red, prediction in blue.
+    plot_band(ax, _empirical_band(rows, h), x=x, color=OBSERVED_COLOR, label="observed")
     prediction = pt.tp_tpp_softmax(weights, stats, h, i, "mean")
     ax.plot(
         x[begin:],
         prediction[begin:],
+        color=PREDICTION_COLOR,
         marker="o",
         markersize=1.5,
         label=r"from $T^{\mathrm{pp}}+T^{\mathrm{p}}$",
