@@ -27,8 +27,6 @@ dependencies = [
 
 [project.scripts]
 # data
-sample-openwebtext = "lm_detokenization.cli.data:sample_openwebtext_cli"
-count-frequency = "lm_detokenization.cli.data:count_frequency_cli"
 attention-rows = "lm_detokenization.cli.data:attention_rows_main"
 six-terms = "lm_detokenization.cli.six_terms:compute_main"
 detok-auroc = "lm_detokenization.cli.detokenization:auroc_main"
@@ -92,7 +90,7 @@ torch = [
 ]
 
 feature-extractor = { git = "https://github.com/gokamoda/transformer-feature-extractor.git", rev = "325eb06" }
-corpus-tools = { git = "https://github.com/gokamoda/corpus-tools.git", rev = "7de5200" }
+corpus-tools = { git = "https://github.com/gokamoda/corpus-tools.git", rev = "0f8b597" }
 hfdecoderutils = { git = "https://github.com/gokamoda/lm_generation_cheatsheet.git", rev = "23796e8" }
 
 [[tool.uv.index]]

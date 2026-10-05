@@ -1,11 +1,12 @@
-from collections import Counter
 from pathlib import Path
 
+import numpy as np
 import pytest
 from corpus_tools import hash_sample, save_hash_sample
+from corpus_tools.count import save_counts
+from scipy import sparse
 
 from lm_detokenization.data.openwebtext import (
-    count_frequency,
     counts_dir,
     get_data,
     load_bigram_counts,
@@ -13,43 +14,29 @@ from lm_detokenization.data.openwebtext import (
     sample_path,
 )
 
-
-class CharTokenizer:
-    """Tokenizes into character codes 0..25 (a..z), like a HF tokenizer call."""
-
-    def __len__(self):
-        return 26
-
-    def __call__(self, texts, add_special_tokens=True):
-        assert add_special_tokens is False
-        return {"input_ids": [[ord(c) - ord("a") for c in t] for t in texts]}
+OPENWEBTEXT_DIR = Path("outputs/corpus-tools/Skylion007--openwebtext/plain_text/train")
 
 
-def test_paths():
-    assert sample_path() == Path("data/openwebtext/hash_n10000.jsonl")
-    assert counts_dir("gpt2") == Path("outputs/freqs/openwebtext/gpt2")
-    assert counts_dir("rinna/japanese-gpt-1b") == Path(
-        "outputs/freqs/openwebtext/rinna--japanese-gpt-1b"
+def test_paths_are_those_of_corpus_tools():
+    assert sample_path() == OPENWEBTEXT_DIR / "samples/hash_n10000.jsonl"
+    assert counts_dir("gpt2") == OPENWEBTEXT_DIR / "all/gpt2/counts/nobos"
+    assert (
+        counts_dir("rinna/japanese-gpt-1b")
+        == OPENWEBTEXT_DIR / "all/rinna--japanese-gpt-1b/counts/nobos"
     )
 
 
-def test_counts_match_counter_and_are_saved(tmp_path):
-    texts = ["abcab", "ba", "a", "", "zzza"] * 7
-    tokens, bigrams = count_frequency(texts, CharTokenizer(), tmp_path)
+def test_compute_data_writes_where_counts_are_read():
+    script = (Path(__file__).parents[3] / "scripts/compute_data.sh").read_text()
+    assert "--output-dir outputs/corpus-tools" in script
+    assert "--tokenizer-name gpt2" in script
 
-    expected_tokens, expected_bigrams = Counter(), Counter()
-    for t in texts:
-        ids = [ord(c) - ord("a") for c in t]
-        expected_tokens.update(ids)
-        expected_bigrams.update(zip(ids[:-1], ids[1:]))  # within a document only
 
-    assert {i: int(c) for i, c in enumerate(tokens) if c} == dict(expected_tokens)
-    coo = bigrams.tocoo()
-    assert {
-        (int(a), int(b)): int(c) for a, b, c in zip(coo.row, coo.col, coo.data)
-    } == dict(expected_bigrams)
-
-    assert sorted(p.name for p in tmp_path.iterdir()) == ["1-grams.npy", "2-grams.npz"]
+def test_load_counts(tmp_path):
+    tokens = np.array([3, 0, 2])
+    bigrams = sparse.csr_matrix(np.array([[0, 1, 0], [0, 0, 0], [2, 0, 0]]))
+    save_counts(tokens, tmp_path / "1-grams.npy")
+    save_counts(bigrams, tmp_path / "2-grams.npz")
     assert (load_token_counts(tmp_path) == tokens).all()
     assert (load_bigram_counts(tmp_path) != bigrams).nnz == 0
 

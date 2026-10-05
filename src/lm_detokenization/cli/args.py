@@ -33,8 +33,8 @@ def add_counts_dir_arg(parser: argparse.ArgumentParser) -> None:
         "--counts-dir",
         type=Path,
         default=None,
-        help="Token and bigram counts made by count-frequency "
-        "(default: outputs/freqs/openwebtext/<model>).",
+        help="Token and bigram counts made by `bash scripts/compute_data.sh "
+        "frequency` (default: their directory under outputs/corpus-tools).",
     )
 
 

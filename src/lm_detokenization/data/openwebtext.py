@@ -1,13 +1,15 @@
 """The OpenWebText sample and the token and bigram counts of OpenWebText.
 
-Both are made with corpus-tools, which also makes them for other projects:
+Both are made with the corpus-tools command (`bash scripts/compute_data.sh
+sample frequency`), from OpenWebText streamed at a fixed commit, and saved
+under outputs/corpus-tools in corpus-tools' layout. They are made apart: the
+counts are of all of OpenWebText, not of the sample.
 
 - The sample is the hash sample of corpus-tools (sha256 of the text; see
-  corpus_tools.sample). It is saved in data/.
+  corpus_tools.sample).
 - Texts are tokenized without special tokens and bigrams are counted within
   each document, as in the published frequency.py. Bigram (a, b) is at row a
-  (prefix), column b (suffix) of a sparse vocabulary x vocabulary matrix. The
-  counts are saved in outputs/.
+  (prefix), column b (suffix) of a sparse vocabulary x vocabulary matrix.
 
 History: when the paper was written (Nov 2024), get_data() loaded the whole
 "openwebtext" dataset (a loading-script dataset on the HF hub) and used
@@ -18,45 +20,29 @@ longer reproduces the published documents, so we switched to a hash-based
 sample that does not depend on the row order.
 """
 
-import itertools
-from collections.abc import Iterable, Iterator
-from contextlib import contextmanager
 from pathlib import Path
 
 import numpy as np
-from corpus_tools import load_hash_sample, preset, save_hash_sample
-from corpus_tools.corpus import open_rows
-from corpus_tools.count import count_ngrams, counts_filename, load_counts, save_counts
-from corpus_tools.tokenize import tokenize
+from corpus_tools import Store, load_hash_sample, preset
+from corpus_tools.count import counts_filename, load_counts
 from scipy import sparse
 
 OPENWEBTEXT = preset("openwebtext")
-# The dataset is read at this commit of its Hub repository, so that the sample
-# and the counts can be made again. The sample made from it is byte-identical
-# to the one made before the switch to corpus-tools.
-OPENWEBTEXT_REVISION = "79d93d786212f7344586290adb811d4ae6a1762c"
 NUM_SAMPLES = 10_000
 
-# Relative to the repository root, where the commands are run.
-DATA_DIR = Path("data") / "openwebtext"
-COUNTS_ROOT = Path("outputs") / "freqs" / "openwebtext"
+# The --output-dir of corpus-tools in scripts/compute_data.sh, relative to the
+# repository root, where the commands are run.
+CORPUS_TOOLS_OUTPUT = Path("outputs") / "corpus-tools"
+_STORE = Store(CORPUS_TOOLS_OUTPUT)
 
 
 def sample_path(num_samples: int = NUM_SAMPLES) -> Path:
-    return DATA_DIR / f"hash_n{num_samples}.jsonl"
+    return _STORE.sample_path(OPENWEBTEXT, num_samples)
 
 
 def counts_dir(model_name: str) -> Path:
-    return COUNTS_ROOT / model_name.replace("/", "--")
-
-
-def make_sample(num_samples: int, output_path: Path) -> int:
-    """Stream the whole dataset once and save its hash sample.
-
-    Returns the number of rows saved.
-    """
-    with open_rows(OPENWEBTEXT, revision=OPENWEBTEXT_REVISION) as (rows, total):
-        return save_hash_sample(rows, output_path, num_samples, total=total)
+    """Counts made by `corpus-tools count --tokenizer-name <model_name>`."""
+    return _STORE.tokenizer_dir(OPENWEBTEXT, model_name) / "counts" / "nobos"
 
 
 def get_data(num_samples: int | None = None) -> list[dict]:
@@ -70,41 +56,6 @@ def get_data(num_samples: int | None = None) -> list[dict]:
             f"{path} not found. Run `bash scripts/compute_data.sh sample` first."
         )
     return load_hash_sample(path, num_samples=num_samples)
-
-
-@contextmanager
-def open_texts(
-    max_documents: int | None = None,
-) -> Iterator[tuple[Iterator[str], int | None]]:
-    """Texts of the whole dataset (streamed) and their number."""
-    with open_rows(OPENWEBTEXT, revision=OPENWEBTEXT_REVISION) as (rows, num_rows):
-        texts = (row["text"] for row in rows)
-        if max_documents is None:
-            yield texts, num_rows
-        else:
-            total = max_documents if num_rows is None else min(num_rows, max_documents)
-            yield itertools.islice(texts, max_documents), total
-
-
-def count_frequency(
-    texts: Iterable[str],
-    tokenizer,
-    output_dir: Path,
-    *,
-    total: int | None = None,
-    flush_every: int = 200_000_000,
-) -> tuple[np.ndarray, sparse.csr_matrix]:
-    """Count the tokens and bigrams of `texts` and save them to `output_dir`."""
-    counts = count_ngrams(
-        tokenize(texts, tokenizer),
-        [1, 2],
-        len(tokenizer),
-        flush_every=flush_every,
-        total=total,
-    )
-    for n, value in counts.items():
-        save_counts(value, output_dir / counts_filename(n))
-    return counts[1], counts[2]
 
 
 def load_token_counts(directory: Path) -> np.ndarray:
