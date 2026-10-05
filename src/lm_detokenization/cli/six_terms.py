@@ -36,8 +36,11 @@ def compute_main() -> None:
     )
     args = parser.parse_args()
     texts = [row["text"] for row in get_data(args.num_documents)]
+    weights = load_layer0_weights(args.model_name)
+    # the model is loaded on the CPU only to read its weights
+    print(f"computing the six terms on {args.device}")
     compute_contributions(
-        load_layer0_weights(args.model_name),
+        weights,
         load_tokenizer(args.model_name),
         texts,
         args.output,

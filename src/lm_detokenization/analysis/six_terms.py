@@ -146,7 +146,7 @@ def compute_contributions(
     )
     out[:] = np.nan
     with torch.no_grad():
-        for k, text in enumerate(tqdm(texts, desc="six terms")):
+        for k, text in enumerate(tqdm(texts, desc=f"six terms on {device}")):
             scores = compute_6terms(
                 prompt=text,
                 tokenizer=tokenizer,
