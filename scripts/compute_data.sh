@@ -42,7 +42,7 @@ frequency() {
 }
 
 attention() {
-  uv run attention-rows --num-documents 100 --positions 500
+  uv run attention-rows --num-documents 5000 --positions 500
 }
 
 six_terms() {

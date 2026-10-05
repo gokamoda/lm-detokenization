@@ -37,9 +37,10 @@ def _tp_tpp(i, h) -> str:
 
 
 def _softmax(i, h) -> str:
+    # a fraction as in the paper: the inline form overflows a NAACL panel
     return (
-        rf"$\mathrm{{softmax}}_j\,(T^{{\mathrm{{pp}}}}_{{{i},j,{h}}}"
-        rf"+T^{{\mathrm{{p}}}}_{{j,{h}}})/\sqrt{{d'}}$"
+        rf"$\mathrm{{softmax}}_j\frac{{T^{{\mathrm{{pp}}}}_{{{i},j,{h}}}"
+        rf"+T^{{\mathrm{{p}}}}_{{j,{h}}}}}{{\sqrt{{d'}}}}$"
     )
 
 
