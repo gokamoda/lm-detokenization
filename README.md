@@ -6,6 +6,13 @@ This repository contains code for the paper
 Understanding the First Stage of Inference Without Inference](https://arxiv.org/abs/2501.15754)  
 by Go Kamoda, Benjamin Heinzerling, Tatsuro Inaba, Keito Kudo, Keisuke Sakaguchi and Kentaro Inui.
 
+## Relation to the published version
+
+The code used for the paper is commit [`6f3951a`](https://github.com/gokamoda/lm-detokenization/tree/6f3951af780b505d91356660c2b45fe541053194) (`main`).
+This code has been updated from it, and the OpenWebText documents used for the observed attention and the six-term decomposition differ from those of the paper.
+The paper took the first documents of OpenWebText after `.shuffle(seed=42)`, which can no longer be reproduced since the dataset on the Hugging Face Hub was converted to Parquet; this code takes the documents with the smallest sha256 of their text instead (the hash sample of [corpus-tools](https://github.com/gokamoda/corpus-tools)).
+The numbers therefore differ from those in the paper, but the conclusions are broadly consistent with it.
+
 ## Create environment
 
 ```
