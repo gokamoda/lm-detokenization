@@ -22,7 +22,7 @@ dependencies = [
     "scipy>=1.14.1",
     "python-dotenv>=1.0.1",
     "scikit-learn>=1.5.2",
-    "sentencepiece>=0.2.0",
+    "sentencepiece>=0.2.1",
 ]
 
 [project.scripts]
@@ -93,8 +93,8 @@ torch = [
   { index = "pytorch-gpu-cu118", extra = "gpu-cu118" },
 ]
 
-feature-extractor = { git = "https://github.com/gokamoda/transformer-feature-extractor.git", rev = "d076033" }
-corpus-tools = { git = "https://github.com/gokamoda/corpus-tools.git", rev = "0f8b597" }
+feature-extractor = { git = "https://github.com/gokamoda/transformer-feature-extractor.git", rev = "421f780" }
+corpus-tools = { git = "https://github.com/gokamoda/corpus-tools.git", rev = "12e6686" }
 hfdecoderutils = { git = "https://github.com/gokamoda/lm_generation_cheatsheet.git", rev = "23796e8" }
 
 [[tool.uv.index]]

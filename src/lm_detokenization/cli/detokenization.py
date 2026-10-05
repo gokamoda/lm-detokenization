@@ -24,6 +24,7 @@ from lm_detokenization.cli.args import (
 from lm_detokenization.data.openwebtext import load_bigram_counts
 from lm_detokenization.plots.detokenization import plot_roc
 from lm_detokenization.plots.save import save_figure
+from lm_detokenization.tokens import token_text
 from lm_detokenization.weights import load_layer0_weights
 
 
@@ -34,11 +35,6 @@ def _affinity(model_name: str) -> TokenAffinity:
 def _suffix_id(tokenizer, word: str) -> int:
     """Last token of `word`, as in the published search_from_str."""
     return tokenizer.encode(word, add_special_tokens=False)[-1]
-
-
-def _token_text(tokenizer, token_id: int) -> str:
-    """Token as written in the paper, with "_" for a leading space."""
-    return tokenizer.convert_ids_to_tokens(token_id).replace("Ġ", "_")
 
 
 def auroc_main() -> None:
@@ -129,11 +125,11 @@ def top_prefixes_main() -> None:
                 rows.append(
                     {
                         "head": head,
-                        "token_i": _token_text(tokenizer, suffix_id),
-                        "token_j": _token_text(tokenizer, prefix_id),
+                        "token_i": token_text(tokenizer, suffix_id),
+                        "token_j": token_text(tokenizer, prefix_id),
                         "rank": rank,
-                        "detokenization": _token_text(tokenizer, prefix_id)
-                        + _token_text(tokenizer, suffix_id).lstrip("_"),
+                        "detokenization": token_text(tokenizer, prefix_id)
+                        + token_text(tokenizer, suffix_id).lstrip("_"),
                     }
                 )
     table = pl.DataFrame(rows)
@@ -155,7 +151,7 @@ def roc_main() -> None:
     args = parser.parse_args()
     tokenizer = load_tokenizer(args.model_name)
     suffix_id = _suffix_id(tokenizer, args.word)
-    text = _token_text(tokenizer, suffix_id)
+    text = token_text(tokenizer, suffix_id)
     fig = plot_roc(
         _affinity(args.model_name),
         load_bigram_counts(resolve_counts_dir(args)).tocsc(),

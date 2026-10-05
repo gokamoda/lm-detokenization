@@ -6,11 +6,11 @@ from pathlib import Path
 import torch
 from feature_extractor import FeatureExtractor
 from feature_extractor.configs import FeatureConfig
-from feature_extractor.data.dataset import TextDataEntry, TextDataset, create_collator
+from feature_extractor.data.dataset import TextDataEntry, TextDataset
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-MAX_LENGTH = 1024
+from lm_detokenization.tokens import MAX_LENGTH, encode
 
 
 @dataclass
@@ -46,15 +46,24 @@ class AttentionRows:
 def extract_attention_rows(
     texts: list[str], positions: list[int], model_name: str = "gpt2"
 ) -> dict[int, AttentionRows]:
-    """Layer-0 attention rows at `positions`. The tokenizer of feature-extractor
-    prepends <|endoftext|> for GPT-2, so position 0 is that token; texts are
-    truncated to MAX_LENGTH tokens."""
+    """Layer-0 attention rows at `positions`. Texts are tokenized by
+    tokens.encode (for GPT-2, position 0 is <|endoftext|>) and truncated to
+    MAX_LENGTH tokens."""
     extractor = FeatureExtractor(model_name)
     extractor.configure(FeatureConfig.from_str(["attn.layer_00.attn_weights"]))
+
+    def collate(batch: list[TextDataEntry]) -> dict:
+        ids = torch.tensor([encode(extractor.tokenizer, e.text) for e in batch])
+        return {
+            "input_ids": ids,
+            "attention_mask": torch.ones_like(ids),
+            "indices": [e.idx for e in batch],
+        }
+
     data_loader = DataLoader(
         TextDataset([TextDataEntry(idx=str(k), text=t) for k, t in enumerate(texts)]),
         batch_size=1,  # no padding inside the extracted attention
-        collate_fn=create_collator(extractor.tokenizer, max_length=MAX_LENGTH),
+        collate_fn=collate,
     )
     rows: dict[int, list] = {p: [] for p in positions}
     index: dict[int, list] = {p: [] for p in positions}

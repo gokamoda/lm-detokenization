@@ -65,15 +65,10 @@ def test_contributions_match_published_loop():
 
 
 class ToyTokenizer:
-    """Token id = character code mod 50, as tensors like a HF tokenizer."""
+    """Token id = character code mod 50, called like a HF tokenizer."""
 
-    def __call__(self, text, return_tensors=None):
-        assert return_tensors == "pt"
-
-        class Encoding:
-            input_ids = torch.tensor([[ord(c) % 50 for c in text]])
-
-        return Encoding()
+    def __call__(self, text):
+        return {"input_ids": [ord(c) % 50 for c in text]}
 
 
 def accelerator() -> str | None:

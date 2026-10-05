@@ -25,6 +25,7 @@ from lm_detokenization.tensor_types import (
     TERM,
     VOCAB,
 )
+from lm_detokenization.tokens import MAX_LENGTH, encode
 from lm_detokenization.weights import Layer0Weights
 
 # Keys of compute_6terms, in the order the contributions are stored.
@@ -38,7 +39,6 @@ TERM_LABELS = {
     "embi_posj": "ep",
     "posi_embj": "pe",
 }
-MAX_LENGTH = 1024
 
 
 def compute_6terms(
@@ -49,7 +49,7 @@ def compute_6terms(
     w_compare: TensorType[HEAD, HIDDEN_DIM, HIDDEN_DIM],
     w_self: TensorType[HEAD, HIDDEN_DIM],
 ) -> dict[str, torch.Tensor]:
-    input_ids = tokenizer(prompt, return_tensors="pt").input_ids[:, :MAX_LENGTH]
+    input_ids = torch.tensor([encode(tokenizer, prompt, MAX_LENGTH)])
 
     tok_emb: TensorType[1, SEQUENCE, HIDDEN_DIM] = wte[input_ids.to(wte.device)]
     pos_enc: TensorType[1, SEQUENCE, HIDDEN_DIM] = wpe[: input_ids.shape[1]].unsqueeze(
