@@ -1,18 +1,18 @@
 """Commands for the plots of the token-derived terms and embedding variances."""
 
 import argparse
-from pathlib import Path
 
 from lm_detokenization.analysis.token_terms import tee_sample
 from lm_detokenization.cli.args import (
-    COUNTS_DIR,
+    add_counts_dir_arg,
     add_figure_args,
     add_model_arg,
     figure_target,
     heads_arg,
+    resolve_counts_dir,
     resolve_heads,
 )
-from lm_detokenization.data.frequency import Counts
+from lm_detokenization.data.openwebtext import load_token_counts
 from lm_detokenization.plots import token_terms as plots
 from lm_detokenization.plots.save import save_figure
 from lm_detokenization.weights import load_layer0_weights
@@ -25,15 +25,6 @@ def _parser(
     add_model_arg(parser)
     add_figure_args(parser, width=width, aspect=aspect)
     return parser
-
-
-def _counts_arg(parser) -> None:
-    parser.add_argument(
-        "--counts-dir",
-        type=Path,
-        default=COUNTS_DIR,
-        help="Token counts made by count-frequency.",
-    )
 
 
 def _save(fig, args) -> None:
@@ -72,15 +63,14 @@ def te_main() -> None:
         "T^e of every token against its corpus count.", width=1.0, aspect=0.35
     )
     heads_arg(parser, [1, 7])
-    _counts_arg(parser)
+    add_counts_dir_arg(parser)
     parser.add_argument("--ncols", type=int, default=4)
     parser.add_argument("--without-ln", action="store_true")
     args = parser.parse_args()
     weights = load_layer0_weights(args.model_name)
-    counts = Counts.load(args.counts_dir)
     fig = plots.plot_te(
         weights,
-        counts.tokens,
+        load_token_counts(resolve_counts_dir(args)),
         resolve_heads(args.heads, weights.num_heads),
         target=figure_target(args),
         width=args.width,
@@ -95,7 +85,7 @@ def variance_main() -> None:
     parser = _parser(
         "Variance of token and position embeddings.", width=1.0, aspect=0.4
     )
-    _counts_arg(parser)
+    add_counts_dir_arg(parser)
     parser.add_argument(
         "--panels",
         nargs="+",
@@ -105,7 +95,9 @@ def variance_main() -> None:
     parser.add_argument("--num-ends", type=int, default=11)
     args = parser.parse_args()
     weights = load_layer0_weights(args.model_name)
-    tokens = Counts.load(args.counts_dir).tokens if "wte" in args.panels else None
+    tokens = (
+        load_token_counts(resolve_counts_dir(args)) if "wte" in args.panels else None
+    )
     fig = plots.plot_variance(
         weights,
         tokens,

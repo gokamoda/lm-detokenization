@@ -6,11 +6,11 @@ Paths are relative to the repository root, where the commands are run.
 import argparse
 from pathlib import Path
 
+from lm_detokenization.data.openwebtext import counts_dir
 from lm_detokenization.plots.targets import TARGETS, FigureTarget
 
 DEFAULT_MODEL = "gpt2"
 OUTPUTS = Path("outputs")
-COUNTS_DIR = OUTPUTS / "freqs" / "openwebtext"
 SIX_TERMS_PATH = OUTPUTS / "six_terms" / "gpt2" / "contributions.npy"
 ATTENTION_DIR = OUTPUTS / "attention" / "gpt2"
 AUROC_PATH = OUTPUTS / "detokenization" / "gpt2" / "auroc.parquet"
@@ -26,6 +26,20 @@ def add_model_arg(parser: argparse.ArgumentParser) -> None:
         default=DEFAULT_MODEL,
         help="Hugging Face model name (only GPT-2 is supported).",
     )
+
+
+def add_counts_dir_arg(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--counts-dir",
+        type=Path,
+        default=None,
+        help="Token and bigram counts made by count-frequency "
+        "(default: outputs/freqs/openwebtext/<model>).",
+    )
+
+
+def resolve_counts_dir(args: argparse.Namespace) -> Path:
+    return args.counts_dir or counts_dir(args.model_name)
 
 
 def add_figure_args(

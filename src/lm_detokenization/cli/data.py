@@ -2,39 +2,41 @@
 observed attention."""
 
 import argparse
-import itertools
 from pathlib import Path
 
-from datasets import load_dataset
+from corpus_tools.corpus import run_and_exit
 from feature_extractor.models import load_tokenizer
 
 from lm_detokenization.analysis.empirical_attention import extract_attention_rows
-from lm_detokenization.cli.args import COUNTS_DIR, add_model_arg, attention_rows_path
-from lm_detokenization.data.frequency import count
-from lm_detokenization.data.hash_sample import save_hash_sample
+from lm_detokenization.cli.args import add_model_arg, attention_rows_path
 from lm_detokenization.data.openwebtext import (
-    OPENWEBTEXT,
-    OPENWEBTEXT_SAMPLE_PATH,
+    NUM_SAMPLES,
+    count_frequency,
+    counts_dir,
     get_data,
+    make_sample,
+    open_texts,
+    sample_path,
 )
 
 
 def sample_openwebtext_main() -> None:
     parser = argparse.ArgumentParser(
-        description="Save a fixed random sample of OpenWebText (see data/hash_sample.py). "
-        "Reads the whole dataset once by streaming (about 24GB of download), but "
-        "stores only the sampled rows."
+        description="Save a fixed random sample of OpenWebText (the hash sample of "
+        "corpus-tools). Reads the whole dataset once by streaming (about 24GB of "
+        "download), but stores only the sampled rows."
     )
-    parser.add_argument("--num-samples", type=int, default=10_000)
-    parser.add_argument("--output-path", type=Path, default=OPENWEBTEXT_SAMPLE_PATH)
+    parser.add_argument("--num-samples", type=int, default=NUM_SAMPLES)
+    parser.add_argument(
+        "--output-path",
+        type=Path,
+        default=None,
+        help="Default: data/openwebtext/hash_n<NUM_SAMPLES>.jsonl.",
+    )
     args = parser.parse_args()
-    dataset = load_dataset(OPENWEBTEXT, split="train", streaming=True)
-    save_hash_sample(
-        dataset,
-        output_path=args.output_path,
-        num_samples=args.num_samples,
-        total=dataset.info.splits["train"].num_examples,
-    )
+    output_path = args.output_path or sample_path(args.num_samples)
+    num_rows = make_sample(args.num_samples, output_path)
+    print(f"saved {output_path}: {num_rows} documents")
 
 
 def count_frequency_main() -> None:
@@ -55,25 +57,40 @@ def count_frequency_main() -> None:
         default=None,
         help="Only the first documents (for a quick test).",
     )
-    parser.add_argument("--output-dir", type=Path, default=COUNTS_DIR)
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=None,
+        help="Default: outputs/freqs/openwebtext/<model>.",
+    )
     args = parser.parse_args()
+    output_dir = args.output_dir or counts_dir(args.model_name)
     tokenizer = load_tokenizer(args.model_name)
     if args.source == "sample":
-        texts = (row["text"] for row in get_data(args.max_documents))
-        total = args.max_documents
+        texts = [row["text"] for row in get_data(args.max_documents)]
+        tokens, bigrams = count_frequency(
+            texts, tokenizer, output_dir, total=len(texts)
+        )
     else:
-        dataset = load_dataset(OPENWEBTEXT, split="train", streaming=True)
-        texts = (row["text"] for row in dataset)
-        total = dataset.info.splits["train"].num_examples
-        if args.max_documents is not None:
-            texts = itertools.islice(texts, args.max_documents)
-            total = args.max_documents
-    counts = count(texts, tokenizer, vocab_size=len(tokenizer), total=total)
-    counts.save(args.output_dir)
+        with open_texts(args.max_documents) as (texts, total):
+            tokens, bigrams = count_frequency(texts, tokenizer, output_dir, total=total)
     print(
-        f"saved {args.output_dir}: {int(counts.tokens.sum())} tokens, "
-        f"{counts.bigrams.nnz} distinct bigrams"
+        f"saved {output_dir}: {int(tokens.sum())} tokens, "
+        f"{bigrams.nnz} distinct bigrams"
     )
+
+
+# The commands that stream OpenWebText end with corpus-tools' run_and_exit, as a
+# process that leaves a stream before its end (--max-documents, an error,
+# Ctrl-C) may otherwise never exit.
+
+
+def sample_openwebtext_cli() -> None:
+    run_and_exit(sample_openwebtext_main)
+
+
+def count_frequency_cli() -> None:
+    run_and_exit(count_frequency_main)
 
 
 def attention_rows_main() -> None:

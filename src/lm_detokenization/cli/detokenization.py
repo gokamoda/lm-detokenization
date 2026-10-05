@@ -14,12 +14,13 @@ from lm_detokenization.analysis.detokenization import (
 )
 from lm_detokenization.cli.args import (
     AUROC_PATH,
-    COUNTS_DIR,
+    add_counts_dir_arg,
     add_figure_args,
     add_model_arg,
     figure_target,
+    resolve_counts_dir,
 )
-from lm_detokenization.data.frequency import Counts
+from lm_detokenization.data.openwebtext import load_bigram_counts
 from lm_detokenization.plots.detokenization import plot_roc
 from lm_detokenization.plots.save import save_figure
 from lm_detokenization.weights import load_layer0_weights
@@ -45,7 +46,7 @@ def auroc_main() -> None:
         "as positives (the mean over suffixes is Figure 2 D)."
     )
     add_model_arg(parser)
-    parser.add_argument("--counts-dir", type=Path, default=COUNTS_DIR)
+    add_counts_dir_arg(parser)
     parser.add_argument(
         "--max-suffixes",
         type=int,
@@ -56,7 +57,7 @@ def auroc_main() -> None:
     parser.add_argument("--output", type=Path, default=AUROC_PATH)
     args = parser.parse_args()
     affinity = _affinity(args.model_name)
-    bigrams = Counts.load(args.counts_dir).bigrams.tocsc()
+    bigrams = load_bigram_counts(resolve_counts_dir(args)).tocsc()
     vocab_size = affinity.wte.shape[0]
     suffix_ids = list(
         range(
@@ -132,7 +133,7 @@ def roc_main() -> None:
     parser = argparse.ArgumentParser(description="ROC curves of T^ee (Figure 2 C).")
     add_model_arg(parser)
     add_figure_args(parser, width=0.4, aspect=0.55)
-    parser.add_argument("--counts-dir", type=Path, default=COUNTS_DIR)
+    add_counts_dir_arg(parser)
     parser.add_argument("--word", default="iens")
     parser.add_argument("--heads", type=int, nargs="+", default=[1, 7])
     args = parser.parse_args()
@@ -141,7 +142,7 @@ def roc_main() -> None:
     text = _token_text(tokenizer, suffix_id)
     fig = plot_roc(
         _affinity(args.model_name),
-        Counts.load(args.counts_dir).bigrams.tocsc(),
+        load_bigram_counts(resolve_counts_dir(args)).tocsc(),
         [(suffix_id, text, h) for h in args.heads],
         target=figure_target(args),
         width=args.width,
