@@ -80,6 +80,18 @@ They do not write into the LaTeX projects; copy the figures there after checking
 
 To make the data and then every figure from scratch, run `bash scripts/all.sh` (about an hour with `CPUS=16 DEVICE=cuda bash scripts/all.sh` on a server with a GPU).
 
+## rinna/japanese-gpt2-small
+
+The same analyses run on [rinna/japanese-gpt2-small](https://huggingface.co/rinna/japanese-gpt2-small), a Japanese GPT-2 with the architecture and size of GPT-2 (12 layers, 12 heads, 768 dims), on Japanese Wikipedia (20231101.ja):
+```
+CPUS=16 DEVICE=cuda bash scripts/compute_data_rinna.sh   # sample, counts, attention, six terms, AUROC
+bash scripts/rinna_figures.sh                            # -> outputs/figures/rinna-japanese-gpt2-small/
+```
+The commands take `--model-name rinna/japanese-gpt2-small --corpus wikipedia-ja`; their outputs go under `outputs/<kind>/rinna--japanese-gpt2-small/`. The figures are for all heads, with the mean AUROC per head (`auroc_by_head.csv`).
+
+Its tokenizer is loaded with [tokenizer-tools](https://github.com/gokamoda/tokenizer-tools) (by corpus-tools and feature-extractor alike): the text is lowercased first, as its vocabulary has no upper-case letters, and no special token is added, as in the model card. GPT-2 gets `<|endoftext|>` first, as in the published code.
+
 ## Notebooks
 
 - `notebooks/prefix_search.ipynb`: for a current token (suffix), $T^{ee}$ and the OpenWebText bigram count of every past token (prefix), and the ROC of a head. Needs the frequency (`bash scripts/compute_data.sh frequency`).
+- `notebooks/prefix_search_rinna.ipynb`: the same for rinna/japanese-gpt2-small and Japanese Wikipedia. Needs `bash scripts/compute_data_rinna.sh frequency`.
