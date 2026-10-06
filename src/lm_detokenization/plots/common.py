@@ -5,6 +5,10 @@ import contextlib
 from collections.abc import Iterator
 
 import matplotlib.pyplot as plt
+
+# Japanese text (the tokens of rinna's models): IPAex Gothic for all text;
+# mathtext keeps its own fonts.
+import matplotlib_fontja  # noqa: F401
 import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
