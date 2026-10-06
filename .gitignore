@@ -1,6 +1,6 @@
 .DS_Store
 __pycache__
-
+.mypy_cache
 
 .vscode
 .venv
@@ -15,6 +15,17 @@ uv.lock
 outputs
 figures
 freqs
+# the OpenWebText sample; made again by scripts/compute_data.sh sample
+/data/
 
 *.log
 *.png
+
+# Agent instructions and settings (local only)
+AGENTS.md
+CLAUDE.md
+.claude/
+
+# Paper sources: each venue is its own git repository (see AGENTS.md)
+conferences/
+.server
