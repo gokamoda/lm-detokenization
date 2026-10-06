@@ -8,7 +8,6 @@ poetry.lock
 uv.lock
 
 
-.ruff_cache
 .pytest_cache
 .ruff_cache
 

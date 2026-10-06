@@ -21,7 +21,6 @@ dependencies = [
     "tiktoken>=0.8.0",
     "protobuf==3.20.3",
     "scipy>=1.14.1",
-    "python-dotenv>=1.0.1",
     "scikit-learn>=1.5.2",
     "sentencepiece>=0.2.1",
 ]
@@ -96,7 +95,6 @@ torch = [
 
 feature-extractor = { git = "https://github.com/gokamoda/transformer-feature-extractor.git", rev = "421f780" }
 corpus-tools = { git = "https://github.com/gokamoda/corpus-tools.git", rev = "12e6686" }
-hfdecoderutils = { git = "https://github.com/gokamoda/lm_generation_cheatsheet.git", rev = "23796e8" }
 
 [[tool.uv.index]]
 name = "pytorch-cpu-mac"
