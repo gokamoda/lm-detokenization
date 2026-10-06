@@ -28,3 +28,4 @@ CLAUDE.md
 
 # Paper sources: each venue is its own git repository (see AGENTS.md)
 conferences/
+.server
