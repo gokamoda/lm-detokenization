@@ -110,15 +110,18 @@ class Layer0Weights:
 
 
 def load_layer0_weights(model_name: str = "gpt2") -> Layer0Weights:
-    """The weights of the first layer, for the tokens of the tokenizer only:
-    rows of the embedding beyond them (rinna/japanese-gpt-1b has 44928 rows
-    for 44877 tokens) are padding, never given to the model."""
+    """The weights of the first layer in float32, for the tokens of the
+    tokenizer only: rows of the embedding beyond them (rinna/japanese-gpt-1b
+    has 44928 rows for 44877 tokens) are padding, never given to the model.
+
+    A model saved in float16 (rinna/japanese-gpt-1b) is loaded as saved, so
+    it is cast to float32, which holds float16 values exactly."""
     # imported here so that modules using only the dataclass stay light
     from feature_extractor.models import load_causal_model, load_tokenizer
 
     from lm_detokenization.layernorm import get_var_matrix
 
-    model = load_causal_model(model_name, device="cpu")
+    model = load_causal_model(model_name, device="cpu").float()
     architecture = get_model_architecture(model)
     wte = get_word_embedding(model)[: len(load_tokenizer(model_name))]
     wpe = get_position_embedding(model)
