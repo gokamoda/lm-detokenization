@@ -1,63 +1,78 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Write the figures of rinna/japanese-gpt2-small (Japanese Wikipedia) for all
+# Write the figures of a Japanese GPT of rinna (Japanese Wikipedia) for all
 # heads, at the printed size of the PhD thesis (--target thesis; --width is a
 # fraction of the textwidth, --aspect is height / width), with the mean AUROC
 # per head as CSV. The heads to show alone are chosen after seeing these.
 #
-# Needs the data made by scripts/compute_data_rinna.sh.
+# The model is $MODEL (default rinna/japanese-gpt2-small, 12 heads), or
+# rinna/japanese-gpt-1b (16 heads); figures with a row of panels per head (or
+# per few heads) are made taller for more heads.
+#
+# Needs the data made by scripts/compute_data_rinna.sh (with the same MODEL).
 #
 # Usage (from the repository root):
-#   bash scripts/rinna_figures.sh              # all figures
-#   bash scripts/rinna_figures.sh six_terms    # only the named ones
+#   bash scripts/rinna_figures.sh                                  # all figures
+#   bash scripts/rinna_figures.sh six_terms                        # only the named ones
+#   MODEL=rinna/japanese-gpt-1b bash scripts/rinna_figures.sh      # -> outputs/figures/rinna-japanese-gpt-1b/
 
-DEST="${DEST:-outputs/figures/rinna-japanese-gpt2-small}"
+MODEL="${MODEL:-rinna/japanese-gpt2-small}"
+DEST="${DEST:-outputs/figures/${MODEL//\//-}}"
 OUT="$(mktemp -d)"
 trap 'rm -rf "$OUT"' EXIT
 T="--target thesis"
-M="--model-name rinna/japanese-gpt2-small"
+M="--model-name $MODEL"
 C="--corpus wikipedia-ja"
+NUM_HEADS="$(uv run python -c "from transformers import AutoConfig; print(AutoConfig.from_pretrained('$MODEL').n_head)")"
+HEADS="$(seq -s ' ' 0 $((NUM_HEADS - 1)))"
+
+# The aspect of a figure made for 12 heads in rows of $2 panels, scaled to
+# the rows NUM_HEADS needs.
+aspect() {
+  awk -v a="$1" -v c="$2" -v n="$NUM_HEADS" \
+    'BEGIN { printf "%.3f", a * int((n + c - 1) / c) / int((12 + c - 1) / c) }'
+}
 
 auroc_table() {
   uv run detok-auroc-table $M --output "$OUT/auroc_by_head.csv"
 }
 
 tee_heatmap() {
-  uv run tee-plot $T $M --heads -1 --ncols 4 --width 1.0 --aspect 0.85 \
+  uv run tee-plot $T $M --heads -1 --ncols 4 --width 1.0 --aspect "$(aspect 0.85 4)" \
     --output "$OUT/tee_head-all.png"
 }
 
 te_scatter() {
-  uv run te-plot $T $M $C --heads -1 --ncols 4 --width 1.0 --aspect 0.48 \
+  uv run te-plot $T $M $C --heads -1 --ncols 4 --width 1.0 --aspect "$(aspect 0.48 4)" \
     --output "$OUT/te_head-all.png"
 }
 
 tp() {
-  uv run tp-plot $T $M --heads -1 --ncols 2 --width 1.0 --aspect 0.743 \
+  uv run tp-plot $T $M --heads -1 --ncols 2 --width 1.0 --aspect "$(aspect 0.743 2)" \
     --output "$OUT/tp_head-all.pdf"
 }
 
 tpp() {
   uv run tpp-plot $T $M --heads -1 --pos-i 50 500 1000 --legend \
-    --width 1.0 --aspect 1.215 \
+    --width 1.0 --aspect "$(aspect 1.215 1)" \
     --output "$OUT/tpp_head-all.pdf"
 }
 
 tp_tpp() {
   uv run tp-tpp-plot $T $M --heads -1 --pos-i 50 500 1000 --views after --legend \
-    --width 1.0 --aspect 1.198 \
+    --width 1.0 --aspect "$(aspect 1.198 1)" \
     --output "$OUT/tptpp_head-all.pdf"
 }
 
 position_bias() {
-  uv run position-bias-plot $T $M --heads -1 --width 1.0 --aspect 1.73 \
+  uv run position-bias-plot $T $M --heads -1 --width 1.0 --aspect "$(aspect 1.73 1)" \
     --output "$OUT/position_bias_head-all.pdf"
 }
 
 six_terms() {
-  uv run six-terms-plot $T $M --heads 0 1 2 3 4 5 6 7 8 9 10 11 --ncols 3 \
-    --width 1.0 --aspect 0.639 \
+  uv run six-terms-plot $T $M --heads $HEADS --ncols 3 \
+    --width 1.0 --aspect "$(aspect 0.639 3)" \
     --output "$OUT/six_terms_head-all.pdf"
 }
 

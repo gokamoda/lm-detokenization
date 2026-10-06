@@ -1,30 +1,37 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Compute the data of rinna/japanese-gpt2-small (the same architecture and
-# size as GPT-2: 12 layers, 12 heads, 768 dims) on Japanese Wikipedia
+# Compute the data of a Japanese GPT of rinna on Japanese Wikipedia
 # (20231101.ja), as scripts/compute_data.sh does for GPT-2 on OpenWebText.
+# The model is $MODEL (default rinna/japanese-gpt2-small, the architecture and
+# size of GPT-2: 12 layers, 12 heads, 768 dims), or rinna/japanese-gpt-1b
+# (24 layers, 16 heads, 2048 dims; the analyses use its first layer).
 # The sample and the counts are made with the corpus-tools command, apart
 # (the counts are of all of Japanese Wikipedia), streaming it at a fixed
 # commit, under outputs/corpus-tools/wikimedia--wikipedia/20231101.ja/train/:
 #
-#   sample        samples/hash_n10000.jsonl              10,000 documents
-#   frequency     all/rinna--japanese-gpt2-small/counts/nobos/  1-grams.npy, 2-grams.npz
-#   attention     outputs/attention/rinna--japanese-gpt2-small/layer00_i500.pt
-#   six_terms     outputs/six_terms/rinna--japanese-gpt2-small/contributions.npy
-#   auroc         outputs/detokenization/rinna--japanese-gpt2-small/auroc.parquet (needs frequency)
+#   sample        samples/hash_n10000.jsonl              10,000 documents (one for all models)
+#   frequency     all/<model>/counts/nobos/              1-grams.npy, 2-grams.npz
+#   attention     outputs/attention/<model>/layer00_i500.pt
+#   six_terms     outputs/six_terms/<model>/contributions.npy
+#   auroc         outputs/detokenization/<model>/auroc.parquet (needs frequency)
+#
+# where <model> is the model name with "--" for "/", e.g.
+# rinna--japanese-gpt-1b.
 #
 # The tokenizer is that of tokenizer-tools (in corpus-tools and
-# feature-extractor alike): the text is lowercased (the vocabulary has no
-# upper-case letters), and no special token is added, as in the model card.
+# feature-extractor alike): no special token is added, as in the model cards,
+# and for japanese-gpt2-small the text is lowercased (its vocabulary has no
+# upper-case letters; that of japanese-gpt-1b has).
 #
 # Usage (from the repository root):
 #   bash scripts/compute_data_rinna.sh                  # all steps, in the order above
 #   bash scripts/compute_data_rinna.sh attention auroc  # only the named steps
 #   CPUS=16 bash scripts/compute_data_rinna.sh frequency      # corpus-tools --cpus
 #   DEVICE=cuda bash scripts/compute_data_rinna.sh six_terms auroc  # on a GPU
+#   MODEL=rinna/japanese-gpt-1b CPUS=16 DEVICE=cuda bash scripts/compute_data_rinna.sh
 
-MODEL=rinna/japanese-gpt2-small
+MODEL="${MODEL:-rinna/japanese-gpt2-small}"
 # Japanese Wikipedia is read at this commit of its Hub repository, so that
 # the sample and the counts can be made again.
 WIKIPEDIA_REVISION=b04c8d1ceb2f5cd4588862100d08de323dccfbaa
