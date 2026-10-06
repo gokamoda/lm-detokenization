@@ -167,7 +167,13 @@ def _compute_auroc_on(
     )
 
 
-def mean_auroc_by_head(auroc: pl.DataFrame) -> pl.DataFrame:
+def mean_auroc_by_head(auroc: pl.DataFrame, *, seen_only: bool = False) -> pl.DataFrame:
+    """Mean AUROC per head, over all suffixes (those never seen as a suffix
+    count as 0, as published) or, with `seen_only`, over the suffixes seen in
+    the corpus. A vocabulary with many tokens unseen in the corpus (30% of
+    rinna/japanese-gpt-1b's on Japanese Wikipedia) lowers the former."""
+    if seen_only:
+        auroc = auroc.filter(pl.col("num_valid_detokenization") > 0)
     return auroc.group_by("head").agg(pl.mean("auroc")).sort("auroc", descending=True)
 
 

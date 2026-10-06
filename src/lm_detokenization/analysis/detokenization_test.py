@@ -91,3 +91,20 @@ def test_compute_auroc_on_a_device_equals_scikit_learn(device):
         == expected["num_valid_detokenization"].to_list()
     )
     np.testing.assert_allclose(got["auroc"], expected["auroc"], rtol=0, atol=1e-6)
+
+
+def test_mean_auroc_over_seen_suffixes_only():
+    import polars as pl
+
+    from lm_detokenization.analysis.detokenization import mean_auroc_by_head
+
+    auroc = pl.DataFrame(
+        {
+            "suffix_id": [0, 1, 0, 1],
+            "head": [0, 0, 1, 1],
+            "auroc": [0.8, 0.0, 0.6, 0.0],
+            "num_valid_detokenization": [5, 0, 5, 0],  # suffix 1 never seen
+        }
+    )
+    assert mean_auroc_by_head(auroc).rows() == [(0, 0.4), (1, 0.3)]
+    assert mean_auroc_by_head(auroc, seen_only=True).rows() == [(0, 0.8), (1, 0.6)]

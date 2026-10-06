@@ -45,6 +45,8 @@ token_affinity_tables() {
   uv run detok-top-prefixes --words iens tarian " Jackson" --heads 4 7 --k 5 \
     --output "$OUT/detokenization_token_affinity_a_top_prefixes.csv"
   uv run detok-auroc-table --output "$OUT/detokenization_token_affinity_d_auroc.csv"
+  # over the suffixes seen in OpenWebText only
+  uv run detok-auroc-table --seen-only --output "$OUT/detokenization_token_affinity_d_auroc_seen.csv"
 }
 
 # fig:detokenization-position-bias: textwidth, columns A-E in one figure.

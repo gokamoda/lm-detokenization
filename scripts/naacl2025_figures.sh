@@ -122,6 +122,8 @@ naacl2025_tables() {
   uv run detok-top-prefixes --words iens tarian " Jackson" --heads 4 7 --k 5 \
     --output "$OUT/fig2_a_top_prefixes.csv"
   uv run detok-auroc-table --output "$OUT/fig2_d_auroc.csv"
+  # not in the paper: over the suffixes seen in OpenWebText only
+  uv run detok-auroc-table --seen-only --output "$OUT/fig2_d_auroc_seen.csv"
 }
 
 ALL_FIGURES=(

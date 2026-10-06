@@ -97,10 +97,17 @@ def auroc_table_main() -> None:
         default=None,
         help="Default: outputs/detokenization/<model>/auroc.parquet.",
     )
+    parser.add_argument(
+        "--seen-only",
+        action="store_true",
+        help="Average over the suffixes seen in the corpus only (by default, "
+        "those never seen count as 0, as in the paper).",
+    )
     parser.add_argument("--output", type=Path, default=None, help="Also write a CSV.")
     args = parser.parse_args()
     table = mean_auroc_by_head(
-        pl.read_parquet(args.auroc or auroc_path(args.model_name))
+        pl.read_parquet(args.auroc or auroc_path(args.model_name)),
+        seen_only=args.seen_only,
     )
     with pl.Config(tbl_rows=100):
         print(table)

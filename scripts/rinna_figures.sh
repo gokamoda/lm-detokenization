@@ -36,6 +36,8 @@ aspect() {
 
 auroc_table() {
   uv run detok-auroc-table $M --output "$OUT/auroc_by_head.csv"
+  # over the suffixes seen in Japanese Wikipedia only
+  uv run detok-auroc-table $M --seen-only --output "$OUT/auroc_by_head_seen.csv"
 }
 
 tee_heatmap() {
