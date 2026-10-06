@@ -1,21 +1,21 @@
 # rinna/japanese-gpt-1b
 
-[README](README.md) に 2 モデルの設定と比較がある。GPT-2 と同じ構成で、24 層、16 ヘッド、2048 次元（分析は層 0 だけ）。重みは float16 で保存されているので、層 0 の重みは float32 に変換して使う。
+See [README](README.md) for the configurations and comparison of the two models.It has the same architecture as GPT-2, with 24 layers, 16 heads, and a hidden dimension of 2048; only layer 0 is analyzed. The weights are stored in float16, so layer-0 weights are converted to float32 for analysis.
 
-## データ
+## Data
 
-日本語 Wikipedia 20231101.ja（commit `b04c8d1`）、1,389,467 文書、1,412,859,983 トークン、異なる bigram 52,126,183。observed attention は、位置 500 まである 2,475 文書。
+Japanese Wikipedia 20231101.ja (commit `b04c8d1`): 1,389,467 documents, 1,412,859,983 tokens, and 52,126,183 distinct bigrams. Observed attention uses 2,475 documents that reach position 500.
 
 ```bash
 CPUS=16 DEVICE=cuda bash scripts/compute_data_rinna.sh
 ```
 
-- tokenizer: 語彙に英大文字があるので、小文字にはしない。特殊トークンは付けない。
-- 語彙の 30%（13,631）は、日本語 Wikipedia で一度も suffix として出現しない（絵文字、記号、Web に特有の語など）。
+- Tokenizer: English uppercase letters are in the vocabulary, so input is not lowercased. No special tokens are added.
+- About 30% of the vocabulary (13,631 tokens) never appears as a suffix in Japanese Wikipedia, including emoji, symbols, and web-specific terms.
 
 ## AUROC
 
-平均の取り方は [gpt2](gpt2.md#auroc) と同じ 3 通り。
+The same three averaging methods as for [GPT-2](gpt2.md#auroc) are used.
 
 ```bash
 uv run python scripts/summarize_results.py auroc rinna/japanese-gpt-1b
@@ -23,25 +23,25 @@ uv run python scripts/summarize_results.py auroc rinna/japanese-gpt-1b
 
 Suffixes never seen in the corpus: 13631 of 44877.
 
-| ヘッド | 15 | 14 | 6 | 3 | 11 | 2 | 13 | 9 | 8 | 5 | 7 | 12 | 4 | 1 | 10 | 0 |
+| Head | 15 | 14 | 6 | 3 | 11 | 2 | 13 | 9 | 8 | 5 | 7 | 12 | 4 | 1 | 10 | 0 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 全体 | 0.484 | 0.473 | 0.462 | 0.448 | 0.418 | 0.398 | 0.385 | 0.371 | 0.362 | 0.317 | 0.316 | 0.313 | 0.304 | 0.282 | 0.281 | 0.271 |
-| 出現のみ | 0.696 | 0.680 | 0.663 | 0.644 | 0.600 | 0.572 | 0.553 | 0.533 | 0.519 | 0.456 | 0.454 | 0.450 | 0.437 | 0.405 | 0.404 | 0.390 |
-| 頻度重み | 0.709 | 0.747 | 0.639 | 0.615 | 0.536 | 0.516 | 0.478 | 0.539 | 0.499 | 0.476 | 0.520 | 0.527 | 0.372 | 0.388 | 0.423 | 0.334 |
+| All | 0.484 | 0.473 | 0.462 | 0.448 | 0.418 | 0.398 | 0.385 | 0.371 | 0.362 | 0.317 | 0.316 | 0.313 | 0.304 | 0.282 | 0.281 | 0.271 |
+| Seen only | 0.696 | 0.680 | 0.663 | 0.644 | 0.600 | 0.572 | 0.553 | 0.533 | 0.519 | 0.456 | 0.454 | 0.450 | 0.437 | 0.405 | 0.404 | 0.390 |
+| Frequency weighted | 0.709 | 0.747 | 0.639 | 0.615 | 0.536 | 0.516 | 0.478 | 0.539 | 0.499 | 0.476 | 0.520 | 0.527 | 0.372 | 0.388 | 0.423 | 0.334 |
 
-- 「全体」は、出現しない 30% の suffix が 0 として入るので、全ヘッドで 0.5 を下回る。モデルの間で比べるときは「出現のみ」を使う。
-- 「出現のみ」の最大はヘッド 15（0.696）で、gpt2 のヘッド 7（0.877）より低い。
-- 0.5 を下回るヘッドが 7 つ（0, 1, 4, 5, 7, 10, 12）ある（gpt2 は 4 つ）。
+- "All" is below 0.5 for every head because the 30% of unseen suffixes contribute zeros. Use "Seen only" when comparing models.
+- The highest "Seen only" AUROC is for head 15 (0.696), below GPT-2 head 7 (0.877).
+- Seven heads (0, 1, 4, 5, 7, 10, 12) score below 0.5, compared with four for GPT-2.
 
-## 例（Figure 2 A 相当）
+## Examples (corresponding to Figure 2 A)
 
-「パン」と「マンション」の suffix について、AUROC の上位 2 ヘッド（15, 14）と、以前の notebook で見ていたヘッド 6 で、$T^{ee}$ の上位 6 個の prefix を並べた。
+For the suffixes of パン and マンション, the top six prefixes by $T^{ee}$ are listed for the two heads with the highest AUROC (15, 14) and head 6, which was examined in the earlier notebook.
 
 ```bash
 uv run detok-top-prefixes --model-name rinna/japanese-gpt-1b --words パン マンション --heads 15 14 6 --k 6
 ```
 
-| suffix | ヘッド | 1 位 | 2 位 | 3 位 | 4 位 | 5 位 | 6 位 |
+| suffix | Head | 1st | 2nd | 3rd | 4th | 5th | 6th |
 |---|---|---|---|---|---|---|---|
 | `パン` | 15 | フライパン | プロパン | のプロパン | _プロパン | アメリカンパン | マレーパン |
 | `パン` | 14 | パンパン | _パンパン | パンのパン | パンをパン | パンツパン | マグパン |
@@ -50,15 +50,15 @@ uv run detok-top-prefixes --model-name rinna/japanese-gpt-1b --words パン マ�
 | `ション` | 14 | ションション | ションはション | ーションション | ッシュション | ッションション | ージョンション |
 | `ション` | 6 | ペンション | _ペンション | キシション | フェンション | スキション | フィンション |
 
-（`_` は単語の先頭の印 `▁`。表は prefix と suffix をつなげた形。）
+`_` represents the word-initial marker `▁`. The table shows concatenated prefixes and suffixes.
 
-- suffix は単語の途中の形を使う（`tokens.suffix_id`）。1b は「パン」を `▁パン`（単語の先頭の形）1 トークンにするので、そのまま使うと別のトークンになる（ヘッド 6 の上位は シャツ、スカート、コロナ、バッグ、ジャケット、サラダ）。「マンション」は `▁マン` + `ション` に分かれるので、suffix は `ション`。
-- ヘッド 15: フライパン、プロパン、ローションと、実在する語になる prefix が上位に来る。gpt2 の Figure 2 A と同じ傾向。
-- ヘッド 6: 「パン」ではカレーパン、糖質制限パンなど、パンの種類になる prefix が上位に来る（以前の notebook の結果と同じ）。「ション」でも 1 位はペンション。
-- ヘッド 14: 上位の多くは suffix と同じトークン（パン→パン、ション→ション）か、それを含むトークン。語をつなげるのではなく、同じトークンに注意を向けるヘッドに見える。位置 500 から自分への重み（0.136）が全ヘッドで最大なのとも合う。AUROC（頻度重みで最大の 0.747）が高い理由は、この表からはわからない。
-- 「マンション」の prefix `マン` は、どのヘッドでも上位 6 個に入らない。
+- Suffixes use the form that occurs inside a word (`tokens.suffix_id`). The 1b tokenizer encodes パン as a single word-initial token, `▁パン`, so using it directly selects a different token (head 6 then ranks シャツ, スカート, コロナ, バッグ, ジャケット, サラダ highest). マンション splits into `▁マン` + `ション`, so its suffix is `ション`.
+- Head 15: Highly ranked prefixes form existing words such as フライパン, プロパン, and ローション, as in Figure 2 A for GPT-2.
+- Head 6: For パン, highly ranked prefixes form types of bread, such as カレーパン and 糖質制限パン, consistent with the earlier notebook. For ション, ペンション also ranks first.
+- Head 14: Many highly ranked prefixes are the suffix token itself (パン→パン, ション→ション) or tokens containing it. This head appears to attend to repeated tokens rather than join word fragments, consistent with its attention to the current position at position 500 (0.136), the highest across heads. This table does not explain its high AUROC (the highest frequency-weighted value, 0.747).
+- The prefix `マン` of マンション is not among the top six for any of these heads.
 
-## 位置 500 からの注意の向き先
+## Attention destinations from position 500
 
 ```bash
 uv run python scripts/summarize_results.py attention rinna/japanese-gpt-1b
@@ -66,7 +66,7 @@ uv run python scripts/summarize_results.py attention rinna/japanese-gpt-1b
 
 2475 documents.
 
-| ヘッド | 位置 0 | 遠い過去（1〜484） | 直近（485〜499） | 自分（500） |
+| Head | Position 0 | Far past (1–484) | Recent past (485–499) | Self (500) |
 |---|---|---|---|---|
 | 0 | 0.008 | 0.918 | 0.068 | 0.005 |
 | 1 | 0.013 | 0.962 | 0.023 | 0.002 |
@@ -85,21 +85,21 @@ uv run python scripts/summarize_results.py attention rinna/japanese-gpt-1b
 | 14 | 0.001 | 0.839 | 0.025 | 0.136 |
 | 15 | 0.005 | 0.238 | 0.721 | 0.035 |
 
-- 位置 0 にも自分にもほとんど向けない。多くのヘッドは遠い過去に広く分散させる。
-- 直近が大きいのはヘッド 15（0.721）と 10（0.593）。
+- Attention to position 0 and the current position is generally small. Many heads distribute attention broadly over the far past.
+- Heads 15 (0.721) and 10 (0.593) pay the most attention to the recent past.
 
-## six-terms（6 項の寄与）
+## Six-term contributions
 
-`outputs/figures/rinna-japanese-gpt-1b/six_terms_head-all.pdf`。未確認。
+`outputs/figures/rinna-japanese-gpt-1b/six_terms_head-all.pdf`. Not yet inspected.
 
-## 図
+## Figures
 
-`outputs/figures/rinna-japanese-gpt-1b/`（全ヘッド、博論の大きさ）。
+`outputs/figures/rinna-japanese-gpt-1b/` (all heads, dissertation size).
 
 ```bash
 bash scripts/rinna_figures.sh
 ```
 
-## 取り上げるヘッドの候補（未決定）
+## Candidate heads to highlight (not yet decided)
 
-ヘッド 15（AUROC 最大、直近への重みも最大、上位の prefix が実在する語になる）と 6（「パン」の例）。14 は AUROC は高いが、上位の prefix が同じトークンなので、例としては向かない。
+Heads 15 (highest AUROC and attention to the recent past, with top prefixes forming existing words) and 6 (the パン example) are candidates. Head 14 has high AUROC but its top prefixes repeat the same token, making it less suitable as an example.

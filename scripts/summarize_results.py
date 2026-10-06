@@ -43,13 +43,13 @@ def auroc_table(model: str) -> str:
     lines = [
         f"Suffixes never seen in the corpus: {unseen} of {auroc.height // num_heads}.",
         "",
-        "| ヘッド | " + " | ".join(str(h) for h in table["head"]) + " |",
+        "| Head | " + " | ".join(str(h) for h in table["head"]) + " |",
         "|---|" + "---|" * num_heads,
     ]
     for column, label in [
-        ("all", "全体"),
-        ("seen", "出現のみ"),
-        ("weighted", "頻度重み"),
+        ("all", "All"),
+        ("seen", "Seen only"),
+        ("weighted", "Frequency weighted"),
     ]:
         lines.append(
             f"| {label} | " + " | ".join(f"{v:.3f}" for v in table[column]) + " |"
@@ -63,7 +63,7 @@ def attention_table(model: str) -> str:
     lines = [
         f"{weights.shape[0]} documents.",
         "",
-        "| ヘッド | 位置 0 | 遠い過去（1〜484） | 直近（485〜499） | 自分（500） |",
+        "| Head | Position 0 | Far past (1–484) | Recent past (485–499) | Self (500) |",
         "|---|---|---|---|---|",
     ]
     for head in range(weights.shape[1]):

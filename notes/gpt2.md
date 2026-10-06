@@ -1,51 +1,51 @@
 # gpt2
 
-[README](README.md) に 2 モデルの設定と比較がある。
+See [README](README.md) for the configurations and comparison of the two models.
 
-## データ
+## Data
 
-OpenWebText（commit `79d93d7`）、8,013,769 文書、9,032,003,326 トークン、異なる bigram 137,312,732。observed attention は、サンプルの先頭 5000 文書のうち位置 500 まである 3,319 文書。
+OpenWebText (commit `79d93d7`): 8,013,769 documents, 9,032,003,326 tokens, and 137,312,732 distinct bigrams. Observed attention uses the 3,319 documents among the first 5,000 sampled documents that reach position 500.
 
 ```bash
 CPUS=16 DEVICE=cuda bash scripts/compute_data.sh
 ```
 
-頻度は、以前 1 プロセスで数えた頻度と完全に一致した。AUROC と six-terms は、GPU と CPU で丸め誤差の範囲で一致した。
+Frequencies matched the earlier single-process counts exactly. AUROC and the six-term decomposition agreed between GPU and CPU within rounding error.
 
 ## AUROC
 
-$T^{ee}$ で、出現する bigram の prefix を上位に並べられるか。3 通りの平均を並べる。
+AUROC measures how well $T^{ee}$ ranks prefixes of observed bigrams. Three averaging methods are reported.
 
-- **全体**: 論文の Figure 2 D と同じ。一度も suffix として出現しないトークンは、AUROC を 0 として平均に含める。
-- **出現のみ**: 出現する suffix だけで平均する。
-- **頻度重み**: 出現する suffix について、その suffix で終わる bigram の総数で重み付けして平均する。
+- **All**: As in Figure 2 D of the paper, tokens never seen as suffixes are included in the average with an AUROC of zero.
+- **Seen only**: Average over suffixes seen in the corpus.
+- **Frequency weighted**: Average over seen suffixes, weighted by the total count of bigrams ending in each suffix.
 
 ```bash
 uv run python scripts/summarize_results.py auroc gpt2
-uv run detok-auroc-table               # 全体（論文の表）
-uv run detok-auroc-table --seen-only   # 出現のみ
+uv run detok-auroc-table               # All suffixes (the paper's table)
+uv run detok-auroc-table --seen-only   # Seen suffixes only
 ```
 
 Suffixes never seen in the corpus: 103 of 50257.
 
-| ヘッド | 7 | 11 | 6 | 0 | 4 | 3 | 10 | 2 | 8 | 1 | 9 | 5 |
+| Head | 7 | 11 | 6 | 0 | 4 | 3 | 10 | 2 | 8 | 1 | 9 | 5 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 全体 | 0.876 | 0.806 | 0.793 | 0.732 | 0.694 | 0.634 | 0.615 | 0.549 | 0.445 | 0.404 | 0.401 | 0.286 |
-| 出現のみ | 0.877 | 0.808 | 0.795 | 0.733 | 0.695 | 0.635 | 0.616 | 0.550 | 0.445 | 0.404 | 0.402 | 0.287 |
-| 頻度重み | 0.865 | 0.788 | 0.568 | 0.591 | 0.830 | 0.846 | 0.733 | 0.591 | 0.687 | 0.620 | 0.616 | 0.613 |
+| All | 0.876 | 0.806 | 0.793 | 0.732 | 0.694 | 0.634 | 0.615 | 0.549 | 0.445 | 0.404 | 0.401 | 0.286 |
+| Seen only | 0.877 | 0.808 | 0.795 | 0.733 | 0.695 | 0.635 | 0.616 | 0.550 | 0.445 | 0.404 | 0.402 | 0.287 |
+| Frequency weighted | 0.865 | 0.788 | 0.568 | 0.591 | 0.830 | 0.846 | 0.733 | 0.591 | 0.687 | 0.620 | 0.616 | 0.613 |
 
-- 「全体」と「出現のみ」はほぼ同じ（出現しない suffix は 0.2%）。
-- 「頻度重み」では、ヘッド 3（0.846）と 4（0.830）が高くなり、ヘッド 7 に近い。頻度の高い suffix では、これらのヘッドもよく当てている。
+- "All" and "Seen only" are nearly identical: only 0.2% of suffixes are unseen.
+- With frequency weighting, heads 3 (0.846) and 4 (0.830) score higher, approaching head 7. These heads also perform well on frequent suffixes.
 
-## 例（論文の Figure 2 A）
+## Examples (Figure 2 A of the paper)
 
-suffix ごとに、$T^{ee}$ の上位 5 個の prefix を、つないだ形（prefix + suffix）で示す。`_` は単語の先頭の空白。
+For each suffix, the top five prefixes by $T^{ee}$ are shown concatenated with the suffix (prefix + suffix). `_` denotes a leading space.
 
 ```bash
 uv run detok-top-prefixes --words iens tarian " Jackson" --heads 4 7 --k 5
 ```
 
-| suffix | ヘッド | 1 位 | 2 位 | 3 位 | 4 位 | 5 位 |
+| suffix | Head | 1st | 2nd | 3rd | 4th | 5th |
 |---|---|---|---|---|---|---|
 | `iens` | 4 | _sapiens | _famiens | _Sapiens | Hugiens | Patiens |
 | `iens` | 7 | Aliens | _sapiens | _aliens | _ALiens | afiens |
@@ -54,9 +54,9 @@ uv run detok-top-prefixes --words iens tarian " Jackson" --heads 4 7 --k 5
 | `_Jackson` | 4 | _JesseJackson | _ArcheJackson | _TriJackson | _CortJackson | _EmersonJackson |
 | `_Jackson` | 7 | _MichaelJackson | _PeterJackson | MichaelJackson | _JesseJackson | PeterJackson |
 
-## 位置 500 からの注意の向き先
+## Attention destinations from position 500
 
-位置 $i=500$ の注意の重みを、文書について平均した。
+Attention weights at position $i=500$ are averaged over documents.
 
 ```bash
 uv run python scripts/summarize_results.py attention gpt2
@@ -64,7 +64,7 @@ uv run python scripts/summarize_results.py attention gpt2
 
 3319 documents.
 
-| ヘッド | 位置 0 | 遠い過去（1〜484） | 直近（485〜499） | 自分（500） |
+| Head | Position 0 | Far past (1–484) | Recent past (485–499) | Self (500) |
 |---|---|---|---|---|
 | 0 | 0.001 | 0.678 | 0.304 | 0.017 |
 | 1 | 0.000 | 0.152 | 0.057 | 0.792 |
@@ -79,12 +79,12 @@ uv run python scripts/summarize_results.py attention gpt2
 | 10 | 0.001 | 0.550 | 0.302 | 0.146 |
 | 11 | 0.003 | 0.974 | 0.022 | 0.001 |
 
-- 自分に集中するヘッド（1, 3）と、直近に集中するヘッド（4, 7）がある。
-- 位置 0（`<|endoftext|>`）には、どのヘッドもほとんど向けない。
+- Some heads focus on the current position (1, 3), while others focus on the recent past (4, 7).
+- All heads pay very little attention to position 0 (`<|endoftext|>`).
 
-## 図
+## Figures
 
-`outputs/figures/naacl2025/`（論文の大きさ）と `outputs/figures/thesis/`（博論の大きさ）。
+`outputs/figures/naacl2025/` (paper size) and `outputs/figures/thesis/` (dissertation size).
 
 ```bash
 bash scripts/naacl2025_figures.sh
