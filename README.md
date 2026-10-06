@@ -84,11 +84,12 @@ To make the data and then every figure from scratch, run `bash scripts/all.sh` (
 
 The same analyses run on Japanese Wikipedia (20231101.ja) with [rinna/japanese-gpt2-small](https://huggingface.co/rinna/japanese-gpt2-small), a Japanese GPT-2 with the architecture and size of GPT-2 (12 layers, 12 heads, 768 dims), or [rinna/japanese-gpt-1b](https://huggingface.co/rinna/japanese-gpt-1b) (the same architecture with 24 layers, 16 heads, 2048 dims):
 ```
-CPUS=16 DEVICE=cuda bash scripts/compute_data_rinna.sh   # sample, counts, attention, six terms, AUROC
-bash scripts/rinna_figures.sh                            # -> outputs/figures/rinna-japanese-gpt2-small/
-MODEL=rinna/japanese-gpt-1b CPUS=16 DEVICE=cuda bash scripts/compute_data_rinna.sh
-MODEL=rinna/japanese-gpt-1b bash scripts/rinna_figures.sh  # -> outputs/figures/rinna-japanese-gpt-1b/
+CPUS=16 DEVICE=cuda bash scripts/compute_data_rinna.sh   # rinna/japanese-gpt-1b: sample, counts, attention, six terms, AUROC
+bash scripts/rinna_figures.sh                            # -> outputs/figures/rinna-japanese-gpt-1b/
+MODEL=rinna/japanese-gpt2-small CPUS=16 DEVICE=cuda bash scripts/compute_data_rinna.sh
+MODEL=rinna/japanese-gpt2-small bash scripts/rinna_figures.sh  # -> outputs/figures/rinna-japanese-gpt2-small/
 ```
+The results so far are in `notes/` (GPT-2 and rinna/japanese-gpt-1b).
 The commands take `--model-name <model> --corpus wikipedia-ja`; their outputs go under `outputs/<kind>/<model>/` (`/` written as `--`). The sample is shared; the counts are per tokenizer. The figures are for all heads, with the mean AUROC per head (`auroc_by_head.csv`).
 
 Their tokenizers are loaded with [tokenizer-tools](https://github.com/gokamoda/tokenizer-tools) (by corpus-tools and feature-extractor alike): no special token is added, as in the model cards, and for japanese-gpt2-small the text is lowercased first, as its vocabulary has no upper-case letters. GPT-2 gets `<|endoftext|>` first, as in the published code.

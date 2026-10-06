@@ -3,9 +3,9 @@ set -euo pipefail
 
 # Compute the data of a Japanese GPT of rinna on Japanese Wikipedia
 # (20231101.ja), as scripts/compute_data.sh does for GPT-2 on OpenWebText.
-# The model is $MODEL (default rinna/japanese-gpt2-small, the architecture and
-# size of GPT-2: 12 layers, 12 heads, 768 dims), or rinna/japanese-gpt-1b
-# (24 layers, 16 heads, 2048 dims; the analyses use its first layer).
+# The model is $MODEL: rinna/japanese-gpt-1b (default; the architecture of
+# GPT-2 with 24 layers, 16 heads, 2048 dims; the analyses use its first
+# layer) or rinna/japanese-gpt2-small (the architecture and size of GPT-2).
 # The sample and the counts are made with the corpus-tools command, apart
 # (the counts are of all of Japanese Wikipedia), streaming it at a fixed
 # commit, under outputs/corpus-tools/wikimedia--wikipedia/20231101.ja/train/:
@@ -29,9 +29,9 @@ set -euo pipefail
 #   bash scripts/compute_data_rinna.sh attention auroc  # only the named steps
 #   CPUS=16 bash scripts/compute_data_rinna.sh frequency      # corpus-tools --cpus
 #   DEVICE=cuda bash scripts/compute_data_rinna.sh six_terms auroc  # on a GPU
-#   MODEL=rinna/japanese-gpt-1b CPUS=16 DEVICE=cuda bash scripts/compute_data_rinna.sh
+#   MODEL=rinna/japanese-gpt2-small CPUS=16 DEVICE=cuda bash scripts/compute_data_rinna.sh
 
-MODEL="${MODEL:-rinna/japanese-gpt2-small}"
+MODEL="${MODEL:-rinna/japanese-gpt-1b}"
 # Japanese Wikipedia is read at this commit of its Hub repository, so that
 # the sample and the counts can be made again.
 WIKIPEDIA_REVISION=b04c8d1ceb2f5cd4588862100d08de323dccfbaa

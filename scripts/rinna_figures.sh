@@ -6,8 +6,8 @@ set -euo pipefail
 # fraction of the textwidth, --aspect is height / width), with the mean AUROC
 # per head as CSV. The heads to show alone are chosen after seeing these.
 #
-# The model is $MODEL (default rinna/japanese-gpt2-small, 12 heads), or
-# rinna/japanese-gpt-1b (16 heads); figures with a row of panels per head (or
+# The model is $MODEL: rinna/japanese-gpt-1b (default, 16 heads) or
+# rinna/japanese-gpt2-small (12 heads); figures with a row of panels per head (or
 # per few heads) are made taller for more heads.
 #
 # Needs the data made by scripts/compute_data_rinna.sh (with the same MODEL).
@@ -15,9 +15,9 @@ set -euo pipefail
 # Usage (from the repository root):
 #   bash scripts/rinna_figures.sh                                  # all figures
 #   bash scripts/rinna_figures.sh six_terms                        # only the named ones
-#   MODEL=rinna/japanese-gpt-1b bash scripts/rinna_figures.sh      # -> outputs/figures/rinna-japanese-gpt-1b/
+#   MODEL=rinna/japanese-gpt2-small bash scripts/rinna_figures.sh  # -> outputs/figures/rinna-japanese-gpt2-small/
 
-MODEL="${MODEL:-rinna/japanese-gpt2-small}"
+MODEL="${MODEL:-rinna/japanese-gpt-1b}"
 DEST="${DEST:-outputs/figures/${MODEL//\//-}}"
 OUT="$(mktemp -d)"
 trap 'rm -rf "$OUT"' EXIT
