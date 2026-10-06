@@ -18,7 +18,7 @@ GPT-2 と rinna の日本語 GPT（japanese-gpt-1b）で、層 0 の detokenizat
 
 ## 計算の確かめ
 
-6 項の合計から作った注意の重み（softmax）は、モデルが実際に計算した層 0 の注意の重みと、どちらのモデルも全ヘッドで 0.0002 以内で一致した（rinna/japanese-gpt2-small でも同じ）。重みの取り出しと 6 項分解は、どのモデルでも正しい。
+6 項の合計から作った注意の重み（softmax）は、モデルが実際に計算した層 0 の注意の重みと、どちらのモデルも全ヘッドで 0.0002 以内で一致した。重みの取り出しと 6 項分解は、どちらのモデルでも正しい。
 
 ```bash
 uv run python scripts/check_six_terms.py gpt2
